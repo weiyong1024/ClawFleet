@@ -1,2 +1,11 @@
+# Build output
+bin/
+
+# Development planning (local only)
+PLAN.md
+
 # Claude Code local settings
 .claude/settings.local.json
+
+# macOS
+.DS_Store
