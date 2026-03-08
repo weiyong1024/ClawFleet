@@ -111,8 +111,17 @@ Once the Gateway is running, open **Chromium** on the desktop and navigate to th
 
 ## CLI Reference
 
+Every command supports `--help` for detailed usage and examples:
+
 ```bash
-clawsandbox build                       # Build the Docker image
+clawsandbox --help              # List all available commands
+clawsandbox dashboard --help    # Show dashboard subcommands
+```
+
+Quick reference:
+
+```bash
+clawsandbox build                       # Build the OpenClaw sandbox image
 clawsandbox create <N>                  # Create N claw instances
 clawsandbox list                        # List all instances and their status
 clawsandbox desktop <name>              # Open an instance's desktop in the browser
