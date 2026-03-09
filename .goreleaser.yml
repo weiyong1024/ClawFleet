@@ -14,7 +14,7 @@ builds:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X github.com/weiyong1024/clawsandbox/internal/version.Version={{.Version}}
+      - -X github.com/weiyong1024/clawsandbox/internal/version.Version=v{{.Version}}
       - -X github.com/weiyong1024/clawsandbox/internal/version.GitCommit={{.ShortCommit}}
       - -X github.com/weiyong1024/clawsandbox/internal/version.BuildDate={{.Date}}
     goos:

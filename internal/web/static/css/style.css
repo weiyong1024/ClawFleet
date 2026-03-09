@@ -179,6 +179,13 @@ body {
 }
 .btn-desktop:hover:not(:disabled) { background: rgba(96, 165, 250, 0.22); }
 
+.btn-configure {
+  background: rgba(168, 130, 255, 0.12);
+  color: #a882ff;
+  border: 1px solid rgba(168, 130, 255, 0.2);
+}
+.btn-configure:hover:not(:disabled) { background: rgba(168, 130, 255, 0.22); }
+
 .btn-ghost {
   background: transparent;
   color: var(--text-dim);
@@ -190,7 +197,7 @@ body {
 /* ── Dashboard ── */
 .dashboard-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
   gap: 16px;
   padding: 24px;
   max-width: 1400px;
@@ -360,6 +367,7 @@ body {
 /* Card actions */
 .card-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
   padding-top: 14px;
   border-top: 1px solid var(--border);

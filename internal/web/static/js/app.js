@@ -6,6 +6,7 @@ import { Toolbar } from './components/toolbar.js';
 import { Dashboard } from './components/dashboard.js';
 import { InstanceDesktop } from './components/instance-desktop.js';
 import { CreateDialog } from './components/create-dialog.js';
+import { ConfigureDialog } from './components/configure-dialog.js';
 import { ToastContainer, useToast } from './components/toast.js';
 import { ConnectionStatus } from './components/connection-status.js';
 
@@ -18,6 +19,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [pending, setPending] = useState({});
   const [connected, setConnected] = useState(true);
+  const [configureName, setConfigureName] = useState(null);
   const { toasts, addToast, removeToast } = useToast();
 
   useEffect(() => {
@@ -105,9 +107,20 @@ function App() {
     })();
   };
 
+  const onConfigure = async (name, config) => {
+    try {
+      await api.configureInstance(name, config);
+      addToast(t('configure.success', name), 'success');
+      setConfigureName(null);
+    } catch (err) {
+      addToast(err.message, 'error');
+    }
+  };
+
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'Escape' && showCreate) setShowCreate(false);
+      if (e.key === 'Escape' && configureName) setConfigureName(null);
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
@@ -134,6 +147,7 @@ function App() {
         onStop=${onStop}
         onDestroy=${onDestroy}
         onDesktop=${navigate}
+        onConfigure=${(name) => setConfigureName(name)}
       />
     ` : html`
       <${InstanceDesktop}
@@ -147,6 +161,13 @@ function App() {
     `}
     ${showCreate && html`
       <${CreateDialog} onClose=${() => setShowCreate(false)} onCreate=${onCreate} />
+    `}
+    ${configureName && html`
+      <${ConfigureDialog}
+        instanceName=${configureName}
+        onClose=${() => setConfigureName(null)}
+        onConfigure=${onConfigure}
+      />
     `}
     <${ToastContainer} toasts=${toasts} onDismiss=${removeToast} />
     <${ConnectionStatus} connected=${connected} />
