@@ -62,20 +62,31 @@ clawsandbox dashboard serve
 
 在仪表盘中点击 **「系统 → 镜像管理」**，构建沙箱镜像（约 1.4 GB，首次构建需要几分钟）。
 
-### 4. 部署与配置
+### 4. 经营你的公司
 
-1. **「资产管理 → Model 配置」** — 添加 LLM API Key 和模型（保存前自动验证）
-2. **「资产管理 → Channel 配置」** — 添加机器人令牌，如 Telegram Bot（可选，保存前自动验证）
-3. **「实例管理 → 创建实例」** — 创建实例
-4. **「实例管理 → 配置」** — 从资产池选择 Model 和 Channel 配置
+把 ClawSandbox 想象成**你的 AI 公司**。资产管理是公司的工具仓库，Fleet 是你的 AI 员工团队。给不同员工分配不同的工具，让你的 AI 团队投入生产。
 
-![仪表盘](docs/images/dashboard.jpeg)
+#### 备好工具库
 
-仪表盘提供：
-- **侧边栏导航** — 资产管理（Model / Channel 配置）、实例管理、系统（镜像管理）
-- 所有实例的实时 CPU / 内存监控
-- 一键 启动 / 停止 / 销毁 操作
-- 点击实例卡片上的 **「桌面」**，进入详情页，内嵌 noVNC 桌面、实时日志和资源图表
+**资产管理 → Model 配置** — 注册 LLM API Key，这是员工用来思考的「大脑」。保存前自动验证。
+
+![Model 配置](docs/images/assets-models.png)
+
+**资产管理 → Channel 配置** — 接入消息平台（Telegram、Discord、Slack 等），这是员工服务客户的「工位」。可选；保存前自动验证。
+
+![Channel 配置](docs/images/assets-channels.png)
+
+#### 招聘与装备团队
+
+**实例管理 → 创建实例** — 创建 OpenClaw 实例，每一个都是加入公司的新员工。
+
+**实例管理 → 配置** — 从资产池为每个实例分配 Model 和 Channel。不同员工可以使用不同的工具，承担不同的任务。
+
+![实例管理](docs/images/fleet.png)
+
+#### 监督你的团队
+
+点击实例卡片上的 **「桌面」**，进入详情页——内嵌 noVNC 桌面、实时日志和资源图表。
 
 ![实例桌面](docs/images/instance-desktop.jpeg)
 

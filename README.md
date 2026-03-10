@@ -62,20 +62,31 @@ clawsandbox dashboard serve
 
 Click **"System → Image"** in the Dashboard and build the sandbox image (~1.4 GB, first build takes several minutes).
 
-### 4. Deploy & Configure
+### 4. Run Your Company
 
-1. **"Assets → Models"** — add your LLM API key and model (validated before saving)
-2. **"Assets → Channels"** — add your bot token, e.g. Telegram Bot (optional, validated before saving)
-3. **"Fleet → Create"** — spin up instances
-4. **"Fleet → Configure"** — assign model and channel configs from your asset pool
+Think of ClawSandbox as **your AI company**. Assets are the tools and resources your company owns; Fleet is your team of AI employees. You assign different tools to different employees, and put your AI workforce into production.
 
-![Dashboard](docs/images/dashboard.jpeg)
+#### Stock your toolbox
 
-The Dashboard provides:
-- **Sidebar navigation** — Assets (Model/Channel config), Fleet (instances), System (image management)
-- Real-time CPU/memory stats for every instance
-- One-click Start / Stop / Destroy actions
-- Click **"Desktop"** on any running instance to open its detail page with an embedded noVNC desktop, live logs, and resource charts
+**Assets → Models** — register LLM API keys. These are the "brains" your employees think with. Each model is validated before saving.
+
+![Models](docs/images/assets-models.png)
+
+**Assets → Channels** — connect messaging platforms (Telegram, Discord, Slack, etc.). These are the "workstations" where your employees serve customers. Optional; validated before saving.
+
+![Channels](docs/images/assets-channels.png)
+
+#### Hire & equip your team
+
+**Fleet → Create** — spin up OpenClaw instances. Each one is a new employee joining your company.
+
+**Fleet → Configure** — assign a model and channel from your asset pool to each instance. Different employees can use different tools for different jobs.
+
+![Fleet](docs/images/fleet.png)
+
+#### Monitor your workforce
+
+Click **"Desktop"** on any running instance to open its detail page — embedded noVNC desktop, live logs, and real-time resource charts.
 
 ![Instance Desktop](docs/images/instance-desktop.jpeg)
 
