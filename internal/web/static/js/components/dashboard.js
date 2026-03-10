@@ -13,7 +13,7 @@ function SkeletonCard() {
   `;
 }
 
-export function Dashboard({ instances, stats, loading, pending, onStart, onStop, onDestroy, onDesktop }) {
+export function Dashboard({ instances, stats, loading, pending, onStart, onStop, onDestroy, onDesktop, onConfigure }) {
   const { t } = useLang();
 
   if (loading) {
@@ -46,6 +46,7 @@ export function Dashboard({ instances, stats, loading, pending, onStart, onStop,
           onStop=${() => onStop(inst.name)}
           onDestroy=${() => onDestroy(inst.name)}
           onDesktop=${() => onDesktop(inst.name)}
+          onConfigure=${() => onConfigure(inst.name)}
         />
       `)}
     </div>

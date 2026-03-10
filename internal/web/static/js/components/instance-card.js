@@ -2,7 +2,7 @@ import { html } from '../lib.js';
 import { useLang } from '../i18n.js';
 import { formatBytes } from '../utils.js';
 
-export function InstanceCard({ instance, stats, pending, onStart, onStop, onDestroy, onDesktop }) {
+export function InstanceCard({ instance, stats, pending, onStart, onStop, onDestroy, onDesktop, onConfigure }) {
   const { t } = useLang();
   const isRunning = instance.status === 'running';
   const cpu = stats?.cpu_percent ?? 0;
@@ -54,6 +54,9 @@ export function InstanceCard({ instance, stats, pending, onStart, onStop, onDest
       <div class="card-actions">
         ${isRunning ? html`
           <button class="btn btn-sm btn-desktop" onClick=${onDesktop} disabled=${busy}>${t('card.desktop')}</button>
+          <button class="btn btn-sm btn-configure" onClick=${onConfigure} disabled=${busy}>
+            ${pending === 'configuring' ? t('action.configuring') : t('card.configure')}
+          </button>
           <button class="btn btn-sm btn-warning" onClick=${onStop} disabled=${busy}>
             ${pending === 'stopping' ? t('action.stopping') : t('card.stop')}
           </button>

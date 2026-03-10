@@ -44,3 +44,21 @@ Go CLI tool (cobra) that manages Docker containers with an embedded Web Dashboar
 Each claw instance is a Docker container running: XFCE4 desktop + TigerVNC + noVNC (browser access on port 690N) + OpenClaw Gateway (port 1878N).
 
 Container data is persisted at `~/.clawsandbox/data/<name>/openclaw/` → `/home/node/.openclaw` inside the container.
+
+## Engineering Principles
+
+All design decisions, project structure, and code implementation must follow best engineering practices. Specifically:
+
+### Security & Least Privilege
+- Never use overly permissive settings (e.g. `chmod 0777`) as shortcuts. Solve permission problems by understanding the ownership model and applying minimal necessary access.
+- Container processes must run with the correct user for the operation: system management commands (e.g. `supervisorctl`) run as `root`, application commands (e.g. `openclaw`) run as the unprivileged `node` user.
+- Never embed secrets or credentials in code, images, or config files.
+
+### Correctness Over Convenience
+- Understand the tools you're automating. Read `--help`, check actual behavior, and verify assumptions (e.g. model name formats, plugin enablement, API readiness) before writing integration code.
+- Prefer explicit configuration over implicit defaults. If a third-party tool has a default that doesn't suit our use case (e.g. `dmPolicy: "pairing"`), set the desired value explicitly rather than hoping users will figure it out.
+- When orchestrating multi-step processes, respect ordering dependencies and readiness checks (e.g. wait for a service to be healthy before issuing commands against it).
+
+### Simplicity & Minimal Surface
+- Don't add abstractions, flags, or config options for hypothetical future needs. Solve the current problem directly.
+- Prefer calling existing CLI tools (`docker exec` + `openclaw` CLI) over writing config files directly — this keeps the integration resilient to upstream format changes.
