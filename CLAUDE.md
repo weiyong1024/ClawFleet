@@ -63,6 +63,9 @@ All design decisions, project structure, and code implementation must follow bes
 - Don't add abstractions, flags, or config options for hypothetical future needs. Solve the current problem directly.
 - Prefer calling existing CLI tools (`docker exec` + `openclaw` CLI) over writing config files directly — this keeps the integration resilient to upstream format changes.
 
+### Verify Before Handoff
+- After fixing a bug or implementing a feature that affects API/server behavior, smoke-test the change yourself (e.g. `curl` requests to the local server, `docker exec` commands) before asking the user to verify on the UI.
+
 ## Wiki Documentation
 
 The project wiki lives in a separate repo (`git@github.com:weiyong1024/ClawSandbox.wiki.git`) and is browsable at `https://github.com/weiyong1024/ClawSandbox/wiki`. It is the primary documentation hub beyond the README.
