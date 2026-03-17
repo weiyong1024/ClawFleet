@@ -50,7 +50,7 @@ jobs:
           context: internal/assets/docker
           push: true
           tags: |
-            ghcr.io/weiyong1024/clawsandbox:${{ steps.meta.outputs.version }}
-            ghcr.io/weiyong1024/clawsandbox:latest
+            ghcr.io/weiyong1024/clawfleet:${{ steps.meta.outputs.version }}
+            ghcr.io/weiyong1024/clawfleet:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max

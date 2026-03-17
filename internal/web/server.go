@@ -15,11 +15,11 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
-// Server is the ClawSandbox Web UI HTTP server.
+// Server is the ClawFleet Web UI HTTP server.
 type Server struct {
 	docker   *docker.Client
 	config   *config.Config
@@ -68,7 +68,7 @@ func (s *Server) ListenAndServe() error {
 			errCh <- fmt.Errorf("listen %s: %w", s.addr, err)
 			return
 		}
-		log.Printf("ClawSandbox Web UI: http://%s", ln.Addr())
+		log.Printf("ClawFleet Web UI: http://%s", ln.Addr())
 		errCh <- srv.Serve(ln)
 	}()
 
@@ -99,7 +99,7 @@ func (s *Server) checkExistingDashboard() error {
 				if proc, err := os.FindProcess(pid); err == nil {
 					if err := proc.Signal(syscall.Signal(0)); err == nil {
 						return fmt.Errorf("Dashboard is already running (pid %d).\n"+
-							"Run 'clawsandbox dashboard stop' first, or use '--port' to listen on a different port", pid)
+							"Run 'clawfleet dashboard stop' first, or use '--port' to listen on a different port", pid)
 					}
 				}
 			}

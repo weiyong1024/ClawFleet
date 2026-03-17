@@ -34,7 +34,7 @@ ClawSandbox 是一个 CLI 工具，在单台宿主机上批量创建和管理多
 │  │  └─────────────────────────────┘  │                      │
 │  │  ┌─────────────────────────────┐  │                      │
 │  │  │     Instance State Store    │  │                      │
-│  │  │  ~/.clawsandbox/state.json  │  │                      │
+│  │  │  ~/.clawfleet/state.json  │  │                      │
 │  │  └─────────────────────────────┘  │                      │
 │  └───────────────────────────────────┘                      │
 │                     │ Docker API                            │
@@ -68,23 +68,23 @@ ClawSandbox 是一个 CLI 工具，在单台宿主机上批量创建和管理多
 **命令设计：**
 
 ```
-clawsandbox build                       # 构建 Docker 镜像
-clawsandbox create <N>                  # 创建 N 个龙虾实例
-clawsandbox list                        # 列出所有实例及状态
-clawsandbox start <name|all>            # 启动实例
-clawsandbox stop <name|all>             # 停止实例
-clawsandbox destroy <name|all>          # 销毁实例（默认保留数据）
-clawsandbox destroy --purge <name|all>  # 销毁实例并删除数据
-clawsandbox desktop <name>              # 在浏览器中打开该实例的 noVNC 桌面
-clawsandbox logs <name> [-f]            # 查看实例日志
+clawfleet build                       # 构建 Docker 镜像
+clawfleet create <N>                  # 创建 N 个龙虾实例
+clawfleet list                        # 列出所有实例及状态
+clawfleet start <name|all>            # 启动实例
+clawfleet stop <name|all>             # 停止实例
+clawfleet destroy <name|all>          # 销毁实例（默认保留数据）
+clawfleet destroy --purge <name|all>  # 销毁实例并删除数据
+clawfleet desktop <name>              # 在浏览器中打开该实例的 noVNC 桌面
+clawfleet logs <name> [-f]            # 查看实例日志
 ```
 
-**配置文件：** `~/.clawsandbox/config.yaml`
+**配置文件：** `~/.clawfleet/config.yaml`
 
 ```yaml
 # 基础镜像配置
 image:
-  name: "clawsandbox/openclaw"
+  name: "clawfleet/openclaw"
   tag: "latest"
 
 # 端口范围
@@ -102,7 +102,7 @@ naming:
   prefix: "claw"      # 实例名: claw-1, claw-2, ...
 ```
 
-### 3.2 Docker 镜像 (clawsandbox/openclaw)
+### 3.2 Docker 镜像 (clawfleet/openclaw)
 
 **基础镜像选择：** `node:22-bookworm`（与 OpenClaw 官方 Docker 方案一致）
 
@@ -185,7 +185,7 @@ claw-N  6900+N        18788+N
 
 ### 3.4 状态管理
 
-**状态文件：** `~/.clawsandbox/state.json`
+**状态文件：** `~/.clawfleet/state.json`
 
 ```json
 {
@@ -211,7 +211,7 @@ claw-N  6900+N        18788+N
 每个容器挂载独立的宿主目录，实现数据持久化和隔离：
 
 ```
-~/.clawsandbox/data/
+~/.clawfleet/data/
 ├── claw-1/
 │   └── openclaw/     → 容器内 /home/node/.openclaw
 ├── claw-2/
@@ -221,18 +221,18 @@ claw-N  6900+N        18788+N
 ```
 
 - 容器销毁后数据默认保留在宿主机上
-- `clawsandbox destroy --purge` 可同时删除数据
+- `clawfleet destroy --purge` 可同时删除数据
 - 目录权限设为 uid 1000（node 用户），与容器内用户一致
 
 ### 3.6 网络设计
 
 **Docker 网络：**
-- 创建专用 bridge 网络 `clawsandbox-net`
+- 创建专用 bridge 网络 `clawfleet-net`
 - 各容器通过容器名互相可达（为后续龙虾间通信预留）
 - 每个容器仅暴露 noVNC 和 Gateway 端口到宿主机
 
 ```
-clawsandbox-net (bridge)
+clawfleet-net (bridge)
 ├── claw-1 (172.20.0.2)
 ├── claw-2 (172.20.0.3)
 └── claw-3 (172.20.0.4)
@@ -248,35 +248,35 @@ clawsandbox-net (bridge)
 
 ```bash
 # 1. 构建镜像（首次，约 1.4GB）
-clawsandbox build
+clawfleet build
 
 # 2. 创建 3 个龙虾
-clawsandbox create 3
+clawfleet create 3
 # → 输出:
 #   Creating claw-1 ... ✓  desktop: http://localhost:6901
 #   Creating claw-2 ... ✓  desktop: http://localhost:6902
 #   Creating claw-3 ... ✓  desktop: http://localhost:6903
 
 # 3. 打开龙虾桌面，进入 OpenClaw onboard 配置 Telegram 等
-clawsandbox desktop claw-1
+clawfleet desktop claw-1
 ```
 
 ### 4.2 日常使用
 
 ```bash
 # 查看军团状态
-clawsandbox list
+clawfleet list
 # NAME        STATUS    DESKTOP              UPTIME
 # claw-1   running   http://localhost:6901 2d 3h
 # claw-2   running   http://localhost:6902 2d 3h
 # claw-3   stopped   -                    -
 
 # 启动/停止
-clawsandbox start claw-3
-clawsandbox stop claw-1
+clawfleet start claw-3
+clawfleet stop claw-1
 
 # 查看日志
-clawsandbox logs claw-1
+clawfleet logs claw-1
 ```
 
 ### 4.3 OpenClaw Onboard 流程（容器内）
@@ -433,19 +433,19 @@ CLI 始终保留作为高级用户和自动化场景的入口。
 ### 构建验证
 ```bash
 make build
-clawsandbox build
+clawfleet build
 ```
 
 ### 端到端验证
 ```bash
 # 1. 创建 2 个实例
-clawsandbox create 2
+clawfleet create 2
 
 # 2. 确认容器运行中
-clawsandbox list
+clawfleet list
 
 # 3. 访问桌面
-clawsandbox desktop claw-1
+clawfleet desktop claw-1
 # → 浏览器打开 http://localhost:6901，看到 XFCE 桌面
 
 # 4. 在桌面终端中完成 OpenClaw 配置
@@ -454,13 +454,13 @@ openclaw gateway --port 18789
 # → 在 Chromium 中打开终端输出的地址，确认控制台可用
 
 # 5. 停止/启动
-clawsandbox stop claw-1
-clawsandbox start claw-1
+clawfleet stop claw-1
+clawfleet start claw-1
 # → 确认数据（~/.openclaw）在容器重启后保留
 
 # 6. 销毁
-clawsandbox destroy claw-2
-clawsandbox list
+clawfleet destroy claw-2
+clawfleet list
 # → 确认 claw-2 已移除
 ```
 
@@ -488,7 +488,7 @@ git tag v0.1.0 && git push origin v0.1.0
    │   x amd64/arm64) │                        │
    └────────┬─────────┴──────────┬─────────────┘
             ▼                    ▼
-     GitHub Release         ghcr.io/weiyong1024/clawsandbox
+     GitHub Release         ghcr.io/weiyong1024/clawfleet
 ```
 
 ### 共享版本包 (`internal/version/`)
@@ -501,20 +501,20 @@ git tag v0.1.0 && git push origin v0.1.0
 
 ### 镜像命名与标签
 
-- **仓库地址**：`ghcr.io/weiyong1024/clawsandbox`
+- **仓库地址**：`ghcr.io/weiyong1024/clawfleet`
 - **默认标签**：运行时通过 `version.ImageTag()` 动态确定
-- `clawsandbox build` 同时打 `:<version>` 和 `:latest` 两个标签
-- `clawsandbox create` 使用 `:<version>` 确保 CLI 与镜像版本一致
+- `clawfleet build` 同时打 `:<version>` 和 `:latest` 两个标签
+- `clawfleet create` 使用 `:<version>` 确保 CLI 与镜像版本一致
 
 ### 自动拉取镜像
 
-当 `clawsandbox create`（或仪表盘的创建接口）发现本地没有镜像时，自动尝试从 GHCR 拉取。联网用户无需执行 `clawsandbox build`。
+当 `clawfleet create`（或仪表盘的创建接口）发现本地没有镜像时，自动尝试从 GHCR 拉取。联网用户无需执行 `clawfleet build`。
 
 ```
 本地未找到镜像
-  → docker pull ghcr.io/weiyong1024/clawsandbox:0.1.0
+  → docker pull ghcr.io/weiyong1024/clawfleet:0.1.0
   → 成功？继续创建
-  → 失败？提示用户执行 clawsandbox build
+  → 失败？提示用户执行 clawfleet build
 ```
 
 ### CI 流水线 (`.github/workflows/release.yml`)
@@ -524,7 +524,7 @@ git tag v0.1.0 && git push origin v0.1.0
 | 任务 | 工具 | 产出 |
 |------|------|------|
 | `release` | GoReleaser | 4 个平台的 CLI 二进制 → GitHub Release |
-| `docker` | docker/build-push-action | 镜像 → `ghcr.io/weiyong1024/clawsandbox:<version>` + `:latest` |
+| `docker` | docker/build-push-action | 镜像 → `ghcr.io/weiyong1024/clawfleet:<version>` + `:latest` |
 
 ### 发版流程（维护者操作）
 

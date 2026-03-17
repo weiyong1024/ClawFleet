@@ -70,17 +70,17 @@ version_ge() {
 }
 
 toolchain_root() {
-  if [ -n "${CLAWSANDBOX_TOOLCHAIN_HOME:-}" ]; then
-    printf '%s\n' "$CLAWSANDBOX_TOOLCHAIN_HOME"
+  if [ -n "${CLAWFLEET_TOOLCHAIN_HOME:-}" ]; then
+    printf '%s\n' "$CLAWFLEET_TOOLCHAIN_HOME"
     return
   fi
 
   case "$(uname -s)" in
     Darwin)
-      printf '%s\n' "$HOME/Library/Application Support/ClawSandbox/toolchains"
+      printf '%s\n' "$HOME/Library/Application Support/ClawFleet/toolchains"
       ;;
     Linux)
-      printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/clawsandbox/toolchains"
+      printf '%s\n' "${XDG_DATA_HOME:-$HOME/.local/share}/clawfleet/toolchains"
       ;;
     *)
       die "unsupported OS: $(uname -s)"
@@ -146,7 +146,7 @@ install_go() {
   archive_name="go${REQUIRED_GO_VERSION}.$(go_os)-$(go_arch).tar.gz"
   download_url="https://go.dev/dl/$archive_name"
 
-  tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/clawsandbox-go.XXXXXX")
+  tmp_dir=$(mktemp -d "${TMPDIR:-/tmp}/clawfleet-go.XXXXXX")
   trap 'rm -rf "$tmp_dir"' EXIT INT TERM HUP
 
   archive_path="$tmp_dir/$archive_name"

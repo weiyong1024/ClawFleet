@@ -7,19 +7,23 @@ import (
 
 	"gopkg.in/yaml.v3"
 
-	"github.com/weiyong1024/clawsandbox/internal/version"
+	"github.com/weiyong1024/clawfleet/internal/version"
 )
 
 const (
-	DefaultImageName = "ghcr.io/weiyong1024/clawsandbox"
+	DefaultImageName = "ghcr.io/weiyong1024/clawfleet"
 	DefaultNoVNCBase    = 6901
 	DefaultGatewayBase  = 18789
 	DefaultMemoryLimit  = "4g"
 	DefaultCPULimit     = 2.0
 	DefaultNamingPrefix = "claw"
 
-	NetworkName  = "clawsandbox-net"
-	LabelManaged = "clawsandbox.managed"
+	NetworkName  = "clawfleet-net"
+	LabelManaged = "clawfleet.managed"
+
+	// Legacy names for backwards compatibility with existing installations.
+	LegacyNetworkName  = "clawsandbox-net"
+	LegacyLabelManaged = "clawsandbox.managed"
 )
 
 type Config struct {
@@ -88,7 +92,23 @@ func DataDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getting home dir: %w", err)
 	}
-	return filepath.Join(home, ".clawsandbox"), nil
+	newDir := filepath.Join(home, ".clawfleet")
+	oldDir := filepath.Join(home, ".clawsandbox")
+
+	// New path already exists, use it directly.
+	if _, err := os.Stat(newDir); err == nil {
+		return newDir, nil
+	}
+	// Old path exists, auto-migrate.
+	if _, err := os.Stat(oldDir); err == nil {
+		if renameErr := os.Rename(oldDir, newDir); renameErr == nil {
+			return newDir, nil
+		}
+		// Rename failed (cross-filesystem etc.), fall back to old path.
+		return oldDir, nil
+	}
+	// Fresh install.
+	return newDir, nil
 }
 
 func configPath() (string, error) {

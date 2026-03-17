@@ -5,19 +5,19 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var configureCmd = &cobra.Command{
 	Use:   "configure <name>",
 	Short: "Configure an OpenClaw instance with LLM provider and chat channel",
 	Args:  cobra.ExactArgs(1),
-	Example: `  clawsandbox configure claw-1 \
+	Example: `  clawfleet configure claw-1 \
     --provider anthropic --api-key sk-ant-... --model claude-sonnet-4-6 \
     --channel telegram --channel-token 123456:ABC...
 
-  clawsandbox configure claw-1 \
+  clawfleet configure claw-1 \
     --provider openai --api-key sk-... --model gpt-5.4 \
     --channel slack --channel-token xoxb-... --channel-app-token xapp-...`,
 	RunE: runConfigure,

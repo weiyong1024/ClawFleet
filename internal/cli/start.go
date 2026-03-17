@@ -5,15 +5,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var startCmd = &cobra.Command{
 	Use:     "start <name|all>",
 	Short:   "Start a stopped claw instance",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox start claw-1\n  clawsandbox start all",
+	Example: "  clawfleet start claw-1\n  clawfleet start all",
 	RunE:    runStart,
 }
 

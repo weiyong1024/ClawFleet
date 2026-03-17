@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/weiyong1024/clawsandbox/internal/snapshot"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/snapshot"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 func (s *Server) loadSnapshots() (*state.SnapshotStore, error) {

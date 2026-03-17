@@ -5,15 +5,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var stopCmd = &cobra.Command{
 	Use:     "stop <name|all>",
 	Short:   "Stop a running claw instance",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox stop claw-1\n  clawsandbox stop all",
+	Example: "  clawfleet stop claw-1\n  clawfleet stop all",
 	RunE:    runStop,
 }
 

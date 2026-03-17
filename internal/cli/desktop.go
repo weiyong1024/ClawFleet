@@ -5,15 +5,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var desktopCmd = &cobra.Command{
 	Use:     "desktop <name>",
 	Short:   "Open a claw's noVNC desktop in the browser",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox desktop claw-1",
+	Example: "  clawfleet desktop claw-1",
 	RunE:    runDesktop,
 }
 
@@ -34,7 +34,7 @@ func runDesktop(cmd *cobra.Command, args []string) error {
 	}
 	status, _, _ := container.Status(cli, inst.ContainerID)
 	if status != "running" {
-		return fmt.Errorf("%s is not running (status: %s)\nRun 'clawsandbox start %s' first", inst.Name, status, inst.Name)
+		return fmt.Errorf("%s is not running (status: %s)\nRun 'clawfleet start %s' first", inst.Name, status, inst.Name)
 	}
 
 	url := fmt.Sprintf("http://localhost:%d", inst.Ports.NoVNC)

@@ -9,11 +9,11 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/port"
-	"github.com/weiyong1024/clawsandbox/internal/snapshot"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/port"
+	"github.com/weiyong1024/clawfleet/internal/snapshot"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var pullFlag bool
@@ -23,7 +23,7 @@ var createCmd = &cobra.Command{
 	Use:     "create <N>",
 	Short:   "Create N isolated OpenClaw instances",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox create 3\n  clawsandbox create 1\n  clawsandbox create 3 --pull",
+	Example: "  clawfleet create 3\n  clawfleet create 1\n  clawfleet create 3 --pull",
 	RunE:    runCreate,
 }
 
@@ -57,11 +57,11 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		if pullFlag {
 			fmt.Printf("Image %s not found locally, pulling from registry...\n", cfg.ImageRef())
 			if pullErr := container.PullImage(cli, cfg.Image.Name, cfg.Image.Tag, os.Stdout); pullErr != nil {
-				return fmt.Errorf("pull failed: %v\nRun 'clawsandbox build' to build it manually", pullErr)
+				return fmt.Errorf("pull failed: %v\nRun 'clawfleet build' to build it manually", pullErr)
 			}
 			fmt.Println("Image pulled successfully.")
 		} else {
-			return fmt.Errorf("Image %s not found. Run 'clawsandbox build' or build via Dashboard.\nUse --pull to pull from the registry instead.", cfg.ImageRef())
+			return fmt.Errorf("Image %s not found. Run 'clawfleet build' or build via Dashboard.\nUse --pull to pull from the registry instead.", cfg.ImageRef())
 		}
 	}
 
@@ -167,7 +167,7 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		created++
 	}
 
-	fmt.Printf("\n%d claw(s) ready. Run 'clawsandbox desktop %s' to open the desktop.\n",
+	fmt.Printf("\n%d claw(s) ready. Run 'clawfleet desktop %s' to open the desktop.\n",
 		created, firstName)
 	return nil
 }

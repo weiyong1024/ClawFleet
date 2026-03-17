@@ -1,11 +1,11 @@
-# ClawSandbox
+# ClawFleet
 
-[![GitHub release](https://img.shields.io/github/v/release/weiyong1024/ClawSandbox)](https://github.com/weiyong1024/ClawSandbox/releases)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/weiyong1024/ClawSandbox/blob/main/LICENSE)
+[![GitHub release](https://img.shields.io/github/v/release/weiyong1024/ClawFleet)](https://github.com/weiyong1024/ClawFleet/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://github.com/weiyong1024/ClawFleet/blob/main/LICENSE)
 [![Go](https://img.shields.io/badge/Go-1.25+-00ADD8?logo=go&logoColor=white)](https://go.dev/)
 [![Docker](https://img.shields.io/badge/Docker-required-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey)](https://github.com/weiyong1024/ClawSandbox)
-[![Wiki](https://img.shields.io/badge/Docs-Wiki-blue)](https://github.com/weiyong1024/ClawSandbox/wiki)
+[![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux-lightgrey)](https://github.com/weiyong1024/ClawFleet)
+[![Wiki](https://img.shields.io/badge/Docs-Wiki-blue)](https://github.com/weiyong1024/ClawFleet/wiki)
 
 > Deploy and manage a fleet of isolated [OpenClaw](https://github.com/openclaw/openclaw) instances on a single machine — from a browser dashboard, no CLI needed.
 
@@ -13,7 +13,7 @@
 
 ---
 
-**You don't need a dedicated server.** If you have a Mac with Apple Silicon, ClawSandbox lets you:
+**You don't need a dedicated server.** If you have a Mac with Apple Silicon, ClawFleet lets you:
 
 - **Deploy OpenClaw in minutes** — fully sandboxed in Docker, completely isolated from everything else on your machine
 - **Run as many as you want** — spin up an entire fleet of OpenClaw instances and experience a one-person company powered by AI
@@ -30,9 +30,9 @@ LLM AI applications are evolving through three stages:
 2. **Agent** — makes everyone a professional
 3. **OpenClaw** — makes everyone a manager
 
-OpenClaw is a self-hosted personal AI assistant that connects to 20+ messaging platforms including WhatsApp, Telegram, and Slack. ClawSandbox removes the deployment bottleneck — instead of struggling to run a single instance, you can spin up an entire fleet with one command.
+OpenClaw is a self-hosted personal AI assistant that connects to 20+ messaging platforms including WhatsApp, Telegram, and Slack. ClawFleet removes the deployment bottleneck — instead of struggling to run a single instance, you can spin up an entire fleet with one command.
 
-## What ClawSandbox Does
+## What ClawFleet Does
 
 - **One-command fleet deployment** — give it a number, get that many isolated OpenClaw instances
 - **Web Dashboard** — manage your entire fleet from a browser with real-time stats, one-click actions, and embedded noVNC desktops
@@ -55,19 +55,19 @@ OpenClaw is a self-hosted personal AI assistant that connects to 20+ messaging p
 ### 1. Install
 
 ```bash
-git clone https://github.com/weiyong1024/ClawSandbox.git
-cd ClawSandbox
+git clone https://github.com/weiyong1024/ClawFleet.git
+cd ClawFleet
 make build
-# If Go is missing, ClawSandbox bootstraps the Go version from go.mod
+# If Go is missing, ClawFleet bootstraps the Go version from go.mod
 # into a user-local toolchain directory automatically.
-# Optionally install to PATH (otherwise use ./bin/clawsandbox in place of clawsandbox below):
+# Optionally install to PATH (otherwise use ./bin/clawfleet in place of clawfleet below):
 sudo make install
 ```
 
 ### 2. Launch Dashboard
 
 ```bash
-clawsandbox dashboard serve
+clawfleet dashboard serve
 # Open http://localhost:8080
 ```
 
@@ -77,7 +77,7 @@ Click **"System → Image"** in the Dashboard and build the sandbox image (~1.4 
 
 ### 4. Run Your Company
 
-Think of ClawSandbox as **your AI company**. Assets are the tools and resources your company owns; Fleet is your team of AI employees. You assign different tools to different employees, and put your AI workforce into production.
+Think of ClawFleet as **your AI company**. Assets are the tools and resources your company owns; Fleet is your team of AI employees. You assign different tools to different employees, and put your AI workforce into production.
 
 #### Stock your toolbox
 
@@ -137,47 +137,47 @@ Connect your fleet to messaging platforms and watch your AI employees work toget
 
 ## Documentation
 
-See the **[Wiki](https://github.com/weiyong1024/ClawSandbox/wiki)** for full documentation, including:
-- [Getting Started](https://github.com/weiyong1024/ClawSandbox/wiki/Getting-Started) — prerequisites, install, first instance
-- [Dashboard Guide](https://github.com/weiyong1024/ClawSandbox/wiki/Dashboard-Guide) — sidebar navigation, asset management, fleet management
-- LLM Provider guides — [Anthropic](https://github.com/weiyong1024/ClawSandbox/wiki/Provider-Anthropic) | [OpenAI](https://github.com/weiyong1024/ClawSandbox/wiki/Provider-OpenAI) | [Google](https://github.com/weiyong1024/ClawSandbox/wiki/Provider-Google) | [DeepSeek](https://github.com/weiyong1024/ClawSandbox/wiki/Provider-DeepSeek)
-- Channel guides — [Telegram](https://github.com/weiyong1024/ClawSandbox/wiki/Channel-Telegram) | [Discord](https://github.com/weiyong1024/ClawSandbox/wiki/Channel-Discord) | [Slack](https://github.com/weiyong1024/ClawSandbox/wiki/Channel-Slack) | [Lark](https://github.com/weiyong1024/ClawSandbox/wiki/Channel-Lark)
-- [CLI Reference](https://github.com/weiyong1024/ClawSandbox/wiki/CLI-Reference) | [FAQ](https://github.com/weiyong1024/ClawSandbox/wiki/FAQ)
+See the **[Wiki](https://github.com/weiyong1024/ClawFleet/wiki)** for full documentation, including:
+- [Getting Started](https://github.com/weiyong1024/ClawFleet/wiki/Getting-Started) — prerequisites, install, first instance
+- [Dashboard Guide](https://github.com/weiyong1024/ClawFleet/wiki/Dashboard-Guide) — sidebar navigation, asset management, fleet management
+- LLM Provider guides — [Anthropic](https://github.com/weiyong1024/ClawFleet/wiki/Provider-Anthropic) | [OpenAI](https://github.com/weiyong1024/ClawFleet/wiki/Provider-OpenAI) | [Google](https://github.com/weiyong1024/ClawFleet/wiki/Provider-Google) | [DeepSeek](https://github.com/weiyong1024/ClawFleet/wiki/Provider-DeepSeek)
+- Channel guides — [Telegram](https://github.com/weiyong1024/ClawFleet/wiki/Channel-Telegram) | [Discord](https://github.com/weiyong1024/ClawFleet/wiki/Channel-Discord) | [Slack](https://github.com/weiyong1024/ClawFleet/wiki/Channel-Slack) | [Lark](https://github.com/weiyong1024/ClawFleet/wiki/Channel-Lark)
+- [CLI Reference](https://github.com/weiyong1024/ClawFleet/wiki/CLI-Reference) | [FAQ](https://github.com/weiyong1024/ClawFleet/wiki/FAQ)
 
 ## CLI Reference
 
 Every command supports `--help` for detailed usage and examples:
 
 ```bash
-clawsandbox --help              # List all available commands
-clawsandbox dashboard --help    # Show dashboard subcommands
+clawfleet --help              # List all available commands
+clawfleet dashboard --help    # Show dashboard subcommands
 ```
 
 Quick reference:
 
 ```bash
-clawsandbox create <N>                  # Create N claw instances (image must be pre-built)
-clawsandbox create <N> --pull           # Create N instances, pull image from registry if missing
-clawsandbox configure <name>            # Configure an instance with a model and optional channel credentials
-clawsandbox list                        # List all instances and their status
-clawsandbox desktop <name>              # Open an instance's desktop in the browser
-clawsandbox start <name|all>            # Start a stopped instance
-clawsandbox stop <name|all>             # Stop a running instance
-clawsandbox restart <name|all>          # Restart an instance (stop + start)
-clawsandbox logs <name> [-f]            # View instance logs
-clawsandbox destroy <name|all>          # Destroy instance (data kept by default)
-clawsandbox destroy --purge <name|all>  # Destroy instance and delete its data
-clawsandbox snapshot save <name>        # Save an instance's soul to the archive
-clawsandbox snapshot list               # List all saved souls
-clawsandbox snapshot delete <name>      # Delete a saved soul
-clawsandbox create 1 --from-snapshot <soul>  # Create instance from a saved soul
-clawsandbox dashboard serve              # Start the Web Dashboard
-clawsandbox dashboard stop               # Stop the Web Dashboard
-clawsandbox dashboard restart            # Restart the Web Dashboard
-clawsandbox dashboard open               # Open the Dashboard in your browser
-clawsandbox build                        # Build image locally (offline/custom use)
-clawsandbox config                       # Show current configuration
-clawsandbox version                      # Print version info
+clawfleet create <N>                  # Create N claw instances (image must be pre-built)
+clawfleet create <N> --pull           # Create N instances, pull image from registry if missing
+clawfleet configure <name>            # Configure an instance with a model and optional channel credentials
+clawfleet list                        # List all instances and their status
+clawfleet desktop <name>              # Open an instance's desktop in the browser
+clawfleet start <name|all>            # Start a stopped instance
+clawfleet stop <name|all>             # Stop a running instance
+clawfleet restart <name|all>          # Restart an instance (stop + start)
+clawfleet logs <name> [-f]            # View instance logs
+clawfleet destroy <name|all>          # Destroy instance (data kept by default)
+clawfleet destroy --purge <name|all>  # Destroy instance and delete its data
+clawfleet snapshot save <name>        # Save an instance's soul to the archive
+clawfleet snapshot list               # List all saved souls
+clawfleet snapshot delete <name>      # Delete a saved soul
+clawfleet create 1 --from-snapshot <soul>  # Create instance from a saved soul
+clawfleet dashboard serve              # Start the Web Dashboard
+clawfleet dashboard stop               # Stop the Web Dashboard
+clawfleet dashboard restart            # Restart the Web Dashboard
+clawfleet dashboard open               # Open the Dashboard in your browser
+clawfleet build                        # Build image locally (offline/custom use)
+clawfleet config                       # Show current configuration
+clawfleet version                      # Print version info
 ```
 
 ## Reset

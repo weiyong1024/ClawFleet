@@ -7,15 +7,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var listCmd = &cobra.Command{
 	Use:     "list",
 	Aliases: []string{"ls", "status"},
 	Short:   "List all claw instances and their status",
-	Example: "  clawsandbox list\n  clawsandbox ls",
+	Example: "  clawfleet list\n  clawfleet ls",
 	RunE:    runList,
 }
 
@@ -27,7 +27,7 @@ func runList(cmd *cobra.Command, args []string) error {
 
 	instances := store.Snapshot()
 	if len(instances) == 0 {
-		fmt.Println("No instances found. Run 'clawsandbox create <N>' to get started.")
+		fmt.Println("No instances found. Run 'clawfleet create <N>' to get started.")
 		return nil
 	}
 

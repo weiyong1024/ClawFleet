@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/container"
 )
 
 // wsUpgrader is shared by all WebSocket handlers.

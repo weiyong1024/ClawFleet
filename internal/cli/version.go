@@ -6,20 +6,20 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/version"
+	"github.com/weiyong1024/clawfleet/internal/version"
 )
 
 var versionShort bool
 
 var versionCmd = &cobra.Command{
 	Use:   "version",
-	Short: "Print the version of ClawSandbox",
+	Short: "Print the version of ClawFleet",
 	Run: func(cmd *cobra.Command, args []string) {
 		if versionShort {
 			fmt.Println(version.Version)
 			return
 		}
-		fmt.Printf("clawsandbox %s\n", version.Version)
+		fmt.Printf("clawfleet %s\n", version.Version)
 		fmt.Printf("  commit:    %s\n", version.GitCommit)
 		fmt.Printf("  built:     %s\n", version.BuildDate)
 		fmt.Printf("  go:        %s\n", runtime.Version())

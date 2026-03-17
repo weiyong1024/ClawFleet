@@ -1,22 +1,22 @@
 version: 2
 
-project_name: clawsandbox
+project_name: clawfleet
 
 before:
   hooks:
     - go mod tidy
 
 builds:
-  - id: clawsandbox
-    main: ./cmd/clawsandbox
-    binary: clawsandbox
+  - id: clawfleet
+    main: ./cmd/clawfleet
+    binary: clawfleet
     env:
       - CGO_ENABLED=0
     ldflags:
       - -s -w
-      - -X github.com/weiyong1024/clawsandbox/internal/version.Version=v{{.Version}}
-      - -X github.com/weiyong1024/clawsandbox/internal/version.GitCommit={{.ShortCommit}}
-      - -X github.com/weiyong1024/clawsandbox/internal/version.BuildDate={{.Date}}
+      - -X github.com/weiyong1024/clawfleet/internal/version.Version=v{{.Version}}
+      - -X github.com/weiyong1024/clawfleet/internal/version.GitCommit={{.ShortCommit}}
+      - -X github.com/weiyong1024/clawfleet/internal/version.BuildDate={{.Date}}
     goos:
       - darwin
       - linux
@@ -45,6 +45,6 @@ changelog:
 release:
   github:
     owner: weiyong1024
-    name: ClawSandbox
+    name: ClawFleet
   prerelease: auto
   name_template: "v{{.Version}}"

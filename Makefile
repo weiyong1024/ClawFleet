@@ -1,7 +1,7 @@
-BINARY     = clawsandbox
+BINARY     = clawfleet
 BUILD_DIR  = ./bin
-MODULE     = github.com/weiyong1024/clawsandbox
-IMAGE      = clawsandbox/openclaw:latest
+MODULE     = github.com/weiyong1024/clawfleet
+IMAGE      = clawfleet/openclaw:latest
 GO_BOOTSTRAP = ./scripts/ensure-go.sh --print-path
 
 VERSION    ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -22,14 +22,14 @@ endef
 
 build:
 	@mkdir -p $(BUILD_DIR)
-	$(call run-go,"$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY) ./cmd/clawsandbox)
+	$(call run-go,"$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY) ./cmd/clawfleet)
 
 build-all:
 	@mkdir -p $(BUILD_DIR)
-	$(call run-go,env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-darwin-arm64 ./cmd/clawsandbox)
-	$(call run-go,env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-darwin-amd64 ./cmd/clawsandbox)
-	$(call run-go,env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-linux-amd64 ./cmd/clawsandbox)
-	$(call run-go,env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-linux-arm64 ./cmd/clawsandbox)
+	$(call run-go,env CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-darwin-arm64 ./cmd/clawfleet)
+	$(call run-go,env CGO_ENABLED=0 GOOS=darwin GOARCH=amd64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-darwin-amd64 ./cmd/clawfleet)
+	$(call run-go,env CGO_ENABLED=0 GOOS=linux GOARCH=amd64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-linux-amd64 ./cmd/clawfleet)
+	$(call run-go,env CGO_ENABLED=0 GOOS=linux GOARCH=arm64 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY)-linux-arm64 ./cmd/clawfleet)
 
 docker-build:
 	docker build -t $(IMAGE) -f internal/assets/docker/Dockerfile internal/assets/docker/
@@ -55,8 +55,8 @@ reset:
 		echo y | $(BUILD_DIR)/$(BINARY) destroy --purge all 2>/dev/null || true; \
 		$(BUILD_DIR)/$(BINARY) dashboard stop 2>/dev/null || true; \
 	fi
-	@echo "==> Removing state directory (~/.clawsandbox)..."
-	rm -rf $(HOME)/.clawsandbox
+	@echo "==> Removing state directory (~/.clawfleet)..."
+	rm -rf $(HOME)/.clawfleet
 	@echo "==> Removing build artifacts..."
 	rm -rf $(BUILD_DIR)
 	@echo "==> Done. Run 'make build' to start fresh."

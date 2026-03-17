@@ -5,15 +5,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var restartCmd = &cobra.Command{
 	Use:     "restart <name|all>",
 	Short:   "Restart a claw instance (stop then start)",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox restart claw-1\n  clawsandbox restart all",
+	Example: "  clawfleet restart claw-1\n  clawfleet restart all",
 	RunE:    runRestart,
 }
 

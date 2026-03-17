@@ -6,9 +6,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/version"
+	"github.com/weiyong1024/clawfleet/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/version"
 )
 
 var buildCmd = &cobra.Command{
@@ -16,9 +16,9 @@ var buildCmd = &cobra.Command{
 	Short: "Build the OpenClaw sandbox Docker image",
 	Long: `Build the OpenClaw sandbox Docker image locally.
 This is only needed for offline use or customization.
-When connected to the internet, 'clawsandbox create' auto-pulls the
+When connected to the internet, 'clawfleet create' auto-pulls the
 pre-built image from GHCR.`,
-	Example: "  clawsandbox build",
+	Example: "  clawfleet build",
 	RunE:    runBuild,
 }
 
@@ -51,6 +51,6 @@ func runBuild(cmd *cobra.Command, args []string) error {
 	}
 
 	fmt.Printf("\nImage %s built successfully.\n", imageRef)
-	fmt.Println("Run 'clawsandbox create <N>' to deploy your fleet.")
+	fmt.Println("Run 'clawfleet create <N>' to deploy your fleet.")
 	return nil
 }

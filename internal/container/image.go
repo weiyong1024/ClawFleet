@@ -10,7 +10,7 @@ import (
 
 	docker "github.com/fsouza/go-dockerclient"
 
-	"github.com/weiyong1024/clawsandbox/internal/assets"
+	"github.com/weiyong1024/clawfleet/internal/assets"
 )
 
 func ImageExists(cli *docker.Client, imageRef string) (bool, error) {

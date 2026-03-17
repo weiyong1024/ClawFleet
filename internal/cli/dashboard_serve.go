@@ -5,9 +5,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/web"
+	"github.com/weiyong1024/clawfleet/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/web"
 )
 
 var dashboardServePort int
@@ -15,8 +15,8 @@ var dashboardServeHost string
 
 var dashboardServeCmd = &cobra.Command{
 	Use:     "serve",
-	Short:   "Start the ClawSandbox Web Dashboard server",
-	Example: "  clawsandbox dashboard serve\n  clawsandbox dashboard serve --port 9090 --host 0.0.0.0",
+	Short:   "Start the ClawFleet Web Dashboard server",
+	Example: "  clawfleet dashboard serve\n  clawfleet dashboard serve --port 9090 --host 0.0.0.0",
 	RunE:    runDashboardServe,
 }
 

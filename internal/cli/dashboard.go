@@ -11,7 +11,7 @@ import (
 var dashboardCmd = &cobra.Command{
 	Use:   "dashboard",
 	Short: "Web Dashboard commands",
-	Long:  `Manage the ClawSandbox Web Dashboard — start the server or open it in your browser.`,
+	Long:  `Manage the ClawFleet Web Dashboard — start the server or open it in your browser.`,
 }
 
 var dashboardOpenPort int
@@ -19,7 +19,7 @@ var dashboardOpenPort int
 var dashboardOpenCmd = &cobra.Command{
 	Use:     "open",
 	Short:   "Open the Dashboard in your browser",
-	Example: "  clawsandbox dashboard open\n  clawsandbox dashboard open --port 9090",
+	Example: "  clawfleet dashboard open\n  clawfleet dashboard open --port 9090",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		url := fmt.Sprintf("http://localhost:%d", dashboardOpenPort)
 		fmt.Printf("Opening Dashboard at %s\n", url)

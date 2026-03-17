@@ -31,8 +31,8 @@ type configSetStep struct {
 	strictJSON bool
 }
 
-// openclawChannelName maps ClawSandbox channel names to OpenClaw plugin IDs.
-// OpenClaw uses "feishu" as the plugin/channel name, but ClawSandbox presents
+// openclawChannelName maps ClawFleet channel names to OpenClaw plugin IDs.
+// OpenClaw uses "feishu" as the plugin/channel name, but ClawFleet presents
 // it as "lark" in the UI for international users.
 func openclawChannelName(channel string) string {
 	if channel == "lark" {
@@ -138,7 +138,7 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 
 	// Step 3: enable channel plugin if specified (must happen before gateway
 	// starts so the plugin is loaded on boot).
-	// Map ClawSandbox channel names to OpenClaw plugin IDs (e.g. "lark" → "feishu").
+	// Map ClawFleet channel names to OpenClaw plugin IDs (e.g. "lark" → "feishu").
 	pluginName := openclawChannelName(p.Channel)
 	if p.Channel != "" {
 		// Feishu plugin requires npm dependencies that may not be installed
@@ -449,7 +449,7 @@ func InjectSoul(cli *docker.Client, containerID string, p SoulParams) error {
 	// Write SOUL.md to the workspace directory where OpenClaw actually reads it.
 	// The workspace is at ~/.openclaw/workspace/ and Gateway watches it for changes.
 	return dockerExecAs(cli, containerID, "node", []string{
-		"bash", "-c", fmt.Sprintf("cat > /home/node/.openclaw/workspace/SOUL.md << 'CLAWSANDBOX_EOF'\n%sCLAWSANDBOX_EOF", content),
+		"bash", "-c", fmt.Sprintf("cat > /home/node/.openclaw/workspace/SOUL.md << 'CLAWFLEET_EOF'\n%sCLAWFLEET_EOF", content),
 	})
 }
 

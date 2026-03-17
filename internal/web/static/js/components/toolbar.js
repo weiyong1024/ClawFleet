@@ -26,7 +26,7 @@ export function Toolbar() {
     <header class="toolbar">
       <div class="toolbar-brand">
         <span class="toolbar-logo">🦞</span>
-        <h1 class="toolbar-title">ClawSandbox</h1>
+        <h1 class="toolbar-title">ClawFleet</h1>
       </div>
       <div class="toolbar-right">
         <div class="lang-dropdown" ref=${ref}>

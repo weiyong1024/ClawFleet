@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/container"
 )
 
 // handleImageStatus reports whether the sandbox Docker image has been built.

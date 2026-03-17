@@ -9,7 +9,7 @@ import (
 var dashboardRestartCmd = &cobra.Command{
 	Use:     "restart",
 	Short:   "Restart the Dashboard server (stop then serve)",
-	Example: "  clawsandbox dashboard restart\n  clawsandbox dashboard restart --port 9090",
+	Example: "  clawfleet dashboard restart\n  clawfleet dashboard restart --port 9090",
 	RunE:    runDashboardRestart,
 }
 

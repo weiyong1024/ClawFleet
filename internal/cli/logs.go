@@ -6,8 +6,8 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var logsFollow bool
@@ -16,7 +16,7 @@ var logsCmd = &cobra.Command{
 	Use:     "logs <name>",
 	Short:   "View container logs for a claw instance",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox logs claw-1\n  clawsandbox logs claw-1 -f",
+	Example: "  clawfleet logs claw-1\n  clawfleet logs claw-1 -f",
 	RunE:    runLogs,
 }
 

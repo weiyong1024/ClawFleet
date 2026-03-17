@@ -12,13 +12,13 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/config"
 )
 
 var dashboardStopCmd = &cobra.Command{
 	Use:     "stop",
 	Short:   "Stop the running Dashboard server",
-	Example: "  clawsandbox dashboard stop",
+	Example: "  clawfleet dashboard stop",
 	RunE:    runDashboardStop,
 }
 

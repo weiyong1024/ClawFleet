@@ -7,13 +7,13 @@ import (
 	"github.com/spf13/cobra"
 	"gopkg.in/yaml.v3"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/config"
 )
 
 var configCmd = &cobra.Command{
 	Use:     "config",
 	Short:   "Show current configuration",
-	Example: "  clawsandbox config",
+	Example: "  clawfleet config",
 	RunE:    runConfigShow,
 }
 
@@ -29,7 +29,7 @@ func runConfigShow(cmd *cobra.Command, args []string) error {
 		configPath = dataDir + "/config.yaml"
 	}
 
-	fmt.Println("# ClawSandbox Configuration")
+	fmt.Println("# ClawFleet Configuration")
 	if configPath != "" {
 		if _, err := os.Stat(configPath); err == nil {
 			fmt.Printf("# Source: %s\n", configPath)

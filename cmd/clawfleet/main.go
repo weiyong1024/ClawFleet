@@ -1,7 +1,7 @@
 package main
 
 import (
-	"github.com/weiyong1024/clawsandbox/internal/cli"
+	"github.com/weiyong1024/clawfleet/internal/cli"
 )
 
 func main() {

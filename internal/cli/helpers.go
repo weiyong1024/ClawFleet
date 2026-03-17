@@ -1,7 +1,7 @@
 package cli
 
 import (
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 // resolveTargets returns copies of the instances matching name, or all instances if name == "all".

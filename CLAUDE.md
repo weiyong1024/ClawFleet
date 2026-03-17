@@ -4,7 +4,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project
 
-ClawSandbox — a minimal, easy-to-use virtualized sandbox tool for OpenClaw. Solves the problem of rapidly deploying multiple isolated OpenClaw instances on a single machine, enabling users to run an entire OpenClaw fleet. Open-sourced on GitHub.
+ClawFleet — deploy and manage a fleet of isolated OpenClaw instances on a single machine, from a browser dashboard. Built on ClawSandbox, a purpose-built infrastructure layer for container orchestration and instance lifecycle management. Open-sourced on GitHub.
+
+## Architecture Layers
+
+ClawFleet is built on top of ClawSandbox, a purpose-built infrastructure layer
+for container orchestration and instance lifecycle management.
+
+### ClawSandbox (Infrastructure)
+Packages: container/, state/, port/, config/, assets/, snapshot/, version/
+Responsible for: Docker orchestration, instance state persistence, port allocation,
+container networking, image management, snapshot archival.
+Standard: production-grade reliability, defensive coding, thorough test coverage.
+
+### ClawFleet (Product)
+Packages: web/, cli/
+Responsible for: REST API, WebSocket real-time updates, Dashboard UI, CLI commands,
+asset management (models/channels/characters), skill management, i18n.
+Standard: user experience, feature velocity, accessibility.
+
+Dependency rule: ClawFleet → ClawSandbox (never reverse).
 
 ## Workflow
 
@@ -24,7 +43,7 @@ Then create a feature branch from the up-to-date main. Never work directly on a 
 # Download dependencies
 go mod tidy
 
-# Build CLI binary → bin/clawsandbox
+# Build CLI binary → bin/clawfleet
 make build
 
 # Run tests
@@ -33,7 +52,7 @@ make test
 # Build Docker image (first time, ~1.4GB, takes several minutes)
 make docker-build
 # or via the CLI itself (uses embedded Dockerfile):
-./bin/clawsandbox build
+./bin/clawfleet build
 
 # Cross-compile for all platforms
 make build-all
@@ -43,28 +62,28 @@ make build-all
 
 Go CLI tool (cobra) that manages Docker containers with an embedded Web Dashboard. Key packages:
 
-- `cmd/clawsandbox/` — binary entry point
+- `cmd/clawfleet/` — binary entry point
 - `internal/cli/` — cobra commands (build, create, list, start, stop, restart, destroy, desktop, logs, dashboard, config, version)
 - `internal/container/` — Docker SDK wrappers (client, image build/check/pull, network, container lifecycle, stats)
 - `internal/port/` — TCP port availability checker and allocator
-- `internal/state/` — instance metadata store (`~/.clawsandbox/state.json`), mutex-protected
-- `internal/config/` — config file loader (`~/.clawsandbox/config.yaml`)
+- `internal/state/` — instance metadata store (`~/.clawfleet/state.json`), mutex-protected
+- `internal/config/` — config file loader (`~/.clawfleet/config.yaml`)
 - `internal/assets/` — embedded Docker build context (Dockerfile, supervisord.conf, entrypoint.sh)
 - `internal/web/` — Web Dashboard: HTTP server, REST API handlers, WebSocket endpoints (stats/logs/events), embedded frontend
 - `internal/version/` — build version info (injected via ldflags)
 
 Each claw instance is a Docker container running: XFCE4 desktop + TigerVNC + noVNC (browser access on port 690N) + OpenClaw Gateway (port 1878N).
 
-Container data is persisted at `~/.clawsandbox/data/<name>/openclaw/` → `/home/node/.openclaw` inside the container.
+Container data is persisted at `~/.clawfleet/data/<name>/openclaw/` → `/home/node/.openclaw` inside the container.
 
 ## OpenClaw Integration
 
-ClawSandbox manages OpenClaw instances via `docker exec` CLI commands. Key integration points:
+ClawFleet manages OpenClaw instances via `docker exec` CLI commands. Key integration points:
 
 ### Character / SOUL.md
 - OpenClaw uses `SOUL.md` (Markdown) at `~/.openclaw/SOUL.md` for character/persona definition
 - Gateway watches this file — hot-reloads on change, no restart needed
-- ClawSandbox renders `CharacterAsset` fields into SOUL.md and writes via `docker exec`
+- ClawFleet renders `CharacterAsset` fields into SOUL.md and writes via `docker exec`
 
 ### Skills
 - **Bundled Skills** (52): Ship with OpenClaw, status depends on binary/env requirements
@@ -103,7 +122,7 @@ All design decisions, project structure, and code implementation must follow bes
 
 ## Wiki Documentation
 
-The project wiki lives in a separate repo (`git@github.com:weiyong1024/ClawSandbox.wiki.git`) and is browsable at `https://github.com/weiyong1024/ClawSandbox/wiki`. It is the primary documentation hub beyond the README.
+The project wiki lives in a separate repo (`git@github.com:weiyong1024/ClawFleet.wiki.git`) and is browsable at `https://github.com/weiyong1024/ClawFleet/wiki`. It is the primary documentation hub beyond the README.
 
 ### Wiki structure
 
@@ -128,7 +147,7 @@ The project wiki lives in a separate repo (`git@github.com:weiyong1024/ClawSandb
   - **Channels are exclusive** — each channel can only be assigned to one instance at a time.
   - **Validation required** — must click "Test" and see validation pass before saving.
   - **Lark is different** — uses App ID + App Secret, not a single token.
-  - **Auto-configuration** — ClawSandbox sets DM/group policies to "open" and allows all senders automatically.
+  - **Auto-configuration** — ClawFleet sets DM/group policies to "open" and allows all senders automatically.
 - Preset models are defined in `internal/web/static/js/components/model-asset-dialog.js` (`MODEL_PRESETS`). When models change there, update the wiki provider pages and `Dashboard-Guide.md`.
 - Validation logic is in `internal/web/validate.go`. If validation endpoints change, update the corresponding channel/provider troubleshooting sections.
 
@@ -146,8 +165,8 @@ The project wiki lives in a separate repo (`git@github.com:weiyong1024/ClawSandb
 ### How to edit the wiki
 
 ```bash
-git clone git@github.com:weiyong1024/ClawSandbox.wiki.git /tmp/ClawSandbox.wiki
-cd /tmp/ClawSandbox.wiki
+git clone git@github.com:weiyong1024/ClawFleet.wiki.git /tmp/ClawFleet.wiki
+cd /tmp/ClawFleet.wiki
 # Edit files...
 git add . && git commit -m "describe the change" && git push
 ```

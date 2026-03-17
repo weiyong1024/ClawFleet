@@ -9,9 +9,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var destroyPurge bool
@@ -20,7 +20,7 @@ var destroyCmd = &cobra.Command{
 	Use:     "destroy <name|all>",
 	Short:   "Destroy a claw instance (data is kept by default)",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox destroy claw-1\n  clawsandbox destroy all --purge",
+	Example: "  clawfleet destroy claw-1\n  clawfleet destroy all --purge",
 	RunE:    runDestroy,
 }
 

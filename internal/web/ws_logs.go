@@ -8,7 +8,7 @@ import (
 
 	"github.com/gorilla/websocket"
 
-	"github.com/weiyong1024/clawsandbox/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/container"
 )
 
 // handleWSLogs streams container logs over a WebSocket (follow mode).

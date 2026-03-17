@@ -5,15 +5,15 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/weiyong1024/clawsandbox/internal/snapshot"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/snapshot"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 var snapshotDeleteCmd = &cobra.Command{
 	Use:     "delete <snapshot-name>",
 	Short:   "Delete a snapshot",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawsandbox snapshot delete my-snapshot",
+	Example: "  clawfleet snapshot delete my-snapshot",
 	RunE:    runSnapshotDelete,
 }
 

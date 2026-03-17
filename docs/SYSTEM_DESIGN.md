@@ -34,7 +34,7 @@ ClawSandbox is a CLI tool that creates and manages multiple isolated OpenClaw in
 │  │  └─────────────────────────────┘  │                      │
 │  │  ┌─────────────────────────────┐  │                      │
 │  │  │     Instance State Store    │  │                      │
-│  │  │  ~/.clawsandbox/state.json  │  │                      │
+│  │  │  ~/.clawfleet/state.json  │  │                      │
 │  │  └─────────────────────────────┘  │                      │
 │  └───────────────────────────────────┘                      │
 │                     │ Docker API                            │
@@ -68,22 +68,22 @@ ClawSandbox is a CLI tool that creates and manages multiple isolated OpenClaw in
 **Commands:**
 
 ```
-clawsandbox build                       # Build the Docker image
-clawsandbox create <N>                  # Create N claw instances
-clawsandbox list                        # List all instances and their status
-clawsandbox start <name|all>            # Start a stopped instance
-clawsandbox stop <name|all>             # Stop a running instance
-clawsandbox destroy <name|all>          # Destroy instance (data kept by default)
-clawsandbox destroy --purge <name|all>  # Destroy instance and delete its data
-clawsandbox desktop <name>              # Open an instance's desktop in the browser
-clawsandbox logs <name> [-f]            # View instance logs
+clawfleet build                       # Build the Docker image
+clawfleet create <N>                  # Create N claw instances
+clawfleet list                        # List all instances and their status
+clawfleet start <name|all>            # Start a stopped instance
+clawfleet stop <name|all>             # Stop a running instance
+clawfleet destroy <name|all>          # Destroy instance (data kept by default)
+clawfleet destroy --purge <name|all>  # Destroy instance and delete its data
+clawfleet desktop <name>              # Open an instance's desktop in the browser
+clawfleet logs <name> [-f]            # View instance logs
 ```
 
-**Config file:** `~/.clawsandbox/config.yaml`
+**Config file:** `~/.clawfleet/config.yaml`
 
 ```yaml
 image:
-  name: "clawsandbox/openclaw"
+  name: "clawfleet/openclaw"
   tag: "latest"
 
 ports:
@@ -98,7 +98,7 @@ naming:
   prefix: "claw"      # Instance names: claw-1, claw-2, ...
 ```
 
-### 3.2 Docker Image (clawsandbox/openclaw)
+### 3.2 Docker Image (clawfleet/openclaw)
 
 **Base image:** `node:22-bookworm` — consistent with OpenClaw's official Docker setup.
 
@@ -178,7 +178,7 @@ Allocation logic:
 
 ### 3.4 State Management
 
-**State file:** `~/.clawsandbox/state.json`
+**State file:** `~/.clawfleet/state.json`
 
 ```json
 {
@@ -204,7 +204,7 @@ The state file is a metadata cache. Docker is the source of truth — the CLI re
 Each container gets its own bind-mounted host directory for persistence and isolation:
 
 ```
-~/.clawsandbox/data/
+~/.clawfleet/data/
 ├── claw-1/
 │   └── openclaw/     → /home/node/.openclaw inside container
 ├── claw-2/
@@ -214,18 +214,18 @@ Each container gets its own bind-mounted host directory for persistence and isol
 ```
 
 - Data is preserved by default when a container is destroyed
-- `clawsandbox destroy --purge` removes the data directory as well
+- `clawfleet destroy --purge` removes the data directory as well
 - Directories are owned by uid 1000 (`node` user), matching the container's user
 
 ### 3.6 Network Design
 
 **Docker network:**
-- A dedicated bridge network `clawsandbox-net` is created on first use
+- A dedicated bridge network `clawfleet-net` is created on first use
 - Containers can reach each other by name (reserved for future inter-claw communication)
 - Only the noVNC and Gateway ports are bound to the host
 
 ```
-clawsandbox-net (bridge)
+clawfleet-net (bridge)
 ├── claw-1 (172.20.0.2)
 ├── claw-2 (172.20.0.3)
 └── claw-3 (172.20.0.4)
@@ -241,31 +241,31 @@ clawsandbox-net (bridge)
 
 ```bash
 # 1. Build the Docker image (once, ~1.4 GB)
-clawsandbox build
+clawfleet build
 
 # 2. Create 3 claws
-clawsandbox create 3
+clawfleet create 3
 # Output:
 #   Creating claw-1 ... ✓  desktop: http://localhost:6901
 #   Creating claw-2 ... ✓  desktop: http://localhost:6902
 #   Creating claw-3 ... ✓  desktop: http://localhost:6903
 
 # 3. Open a claw's desktop and complete one-time onboarding
-clawsandbox desktop claw-1
+clawfleet desktop claw-1
 ```
 
 ### 4.2 Daily use
 
 ```bash
-clawsandbox list
+clawfleet list
 # NAME        STATUS    DESKTOP              UPTIME
 # claw-1   running   http://localhost:6901 2d 3h
 # claw-2   running   http://localhost:6902 2d 3h
 # claw-3   stopped   -                    -
 
-clawsandbox start claw-3
-clawsandbox stop claw-1
-clawsandbox logs claw-1
+clawfleet start claw-3
+clawfleet stop claw-1
+clawfleet logs claw-1
 ```
 
 ### 4.3 OpenClaw onboarding (inside the container)
@@ -299,7 +299,7 @@ Tested on M4 MacBook Air (16 GB RAM, 512 GB SSD):
 **Recommendations:**
 - 16 GB host: up to 3 active instances (with Chromium), or 5 light-load instances
 - Default `memory_limit=4g` per container prevents a single runaway instance from affecting the host
-- Adjust limits via `~/.clawsandbox/config.yaml`
+- Adjust limits via `~/.clawfleet/config.yaml`
 
 ## 6. Repository Structure
 
@@ -421,19 +421,19 @@ The CLI is always kept as the primary interface for advanced users and automatio
 ### Build validation
 ```bash
 make build
-clawsandbox build
+clawfleet build
 ```
 
 ### End-to-end validation
 ```bash
 # 1. Create 2 instances
-clawsandbox create 2
+clawfleet create 2
 
 # 2. Confirm containers are running
-clawsandbox list
+clawfleet list
 
 # 3. Open desktop
-clawsandbox desktop claw-1
+clawfleet desktop claw-1
 # → Browser opens http://localhost:6901 showing XFCE desktop
 
 # 4. Complete onboarding inside the container
@@ -442,13 +442,13 @@ openclaw gateway --port 18789
 # → Open Chromium, navigate to printed URL, confirm Control UI loads
 
 # 5. Stop / start (verify data persistence)
-clawsandbox stop claw-1
-clawsandbox start claw-1
+clawfleet stop claw-1
+clawfleet start claw-1
 # → ~/.openclaw data survives container restart
 
 # 6. Destroy
-clawsandbox destroy claw-2
-clawsandbox list
+clawfleet destroy claw-2
+clawfleet list
 # → claw-2 no longer listed
 ```
 
@@ -476,7 +476,7 @@ git tag v0.1.0 && git push origin v0.1.0
    │   x amd64/arm64) │                        │
    └────────┬─────────┴──────────┬─────────────┘
             ▼                    ▼
-     GitHub Release         ghcr.io/weiyong1024/clawsandbox
+     GitHub Release         ghcr.io/weiyong1024/clawfleet
 ```
 
 ### Shared version package (`internal/version/`)
@@ -489,20 +489,20 @@ The `ImageTag()` helper derives the Docker image tag from the CLI version:
 
 ### Image naming and tagging
 
-- **Registry**: `ghcr.io/weiyong1024/clawsandbox`
+- **Registry**: `ghcr.io/weiyong1024/clawfleet`
 - **Default tag**: determined at runtime via `version.ImageTag()`
-- `clawsandbox build` tags the image with both `:<version>` and `:latest`
-- `clawsandbox create` uses `:<version>` to ensure CLI-image version consistency
+- `clawfleet build` tags the image with both `:<version>` and `:latest`
+- `clawfleet create` uses `:<version>` to ensure CLI-image version consistency
 
 ### Auto-pull on create
 
-When `clawsandbox create` (or the Dashboard's create action) finds the image missing locally, it automatically attempts `docker pull` from GHCR before failing. Users with internet access never need to run `clawsandbox build`.
+When `clawfleet create` (or the Dashboard's create action) finds the image missing locally, it automatically attempts `docker pull` from GHCR before failing. Users with internet access never need to run `clawfleet build`.
 
 ```
 image not found locally
-  → docker pull ghcr.io/weiyong1024/clawsandbox:0.1.0
+  → docker pull ghcr.io/weiyong1024/clawfleet:0.1.0
   → success? proceed with create
-  → fail? suggest `clawsandbox build`
+  → fail? suggest `clawfleet build`
 ```
 
 ### CI pipeline (`.github/workflows/release.yml`)
@@ -512,7 +512,7 @@ Triggered on `v*` tag push. Two parallel jobs:
 | Job | Tool | Output |
 |-----|------|--------|
 | `release` | GoReleaser | 4 CLI binaries → GitHub Release |
-| `docker` | docker/build-push-action | Image → `ghcr.io/weiyong1024/clawsandbox:<version>` + `:latest` |
+| `docker` | docker/build-push-action | Image → `ghcr.io/weiyong1024/clawfleet:<version>` + `:latest` |
 
 ### Release workflow (for maintainers)
 

@@ -9,11 +9,11 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/weiyong1024/clawsandbox/internal/config"
-	"github.com/weiyong1024/clawsandbox/internal/container"
-	"github.com/weiyong1024/clawsandbox/internal/port"
-	"github.com/weiyong1024/clawsandbox/internal/snapshot"
-	"github.com/weiyong1024/clawsandbox/internal/state"
+	"github.com/weiyong1024/clawfleet/internal/config"
+	"github.com/weiyong1024/clawfleet/internal/container"
+	"github.com/weiyong1024/clawfleet/internal/port"
+	"github.com/weiyong1024/clawfleet/internal/snapshot"
+	"github.com/weiyong1024/clawfleet/internal/state"
 )
 
 // instanceResponse is the JSON representation of a single instance.
@@ -106,7 +106,7 @@ func (s *Server) handleCreateInstances(w http.ResponseWriter, r *http.Request) {
 	}
 	if !exists {
 		writeError(w, http.StatusPreconditionFailed, fmt.Sprintf(
-			"Image %s not found. Build the image via System → Image in the Dashboard, or run 'clawsandbox build'.", cfg.ImageRef()))
+			"Image %s not found. Build the image via System → Image in the Dashboard, or run 'clawfleet build'.", cfg.ImageRef()))
 		return
 	}
 

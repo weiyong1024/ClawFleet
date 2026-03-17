@@ -402,7 +402,7 @@ const messages = {
   },
 };
 
-let currentLang = localStorage.getItem('clawsandbox-lang')
+let currentLang = localStorage.getItem('clawfleet-lang')
   || (navigator.language.startsWith('zh') ? 'zh' : 'en');
 
 const listeners = new Set();
@@ -422,7 +422,7 @@ export function useLang() {
 
   const setLang = (l) => {
     currentLang = l;
-    localStorage.setItem('clawsandbox-lang', l);
+    localStorage.setItem('clawfleet-lang', l);
     notify();
   };
 

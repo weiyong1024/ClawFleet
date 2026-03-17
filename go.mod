@@ -1,4 +1,4 @@
-module github.com/weiyong1024/clawsandbox
+module github.com/weiyong1024/clawfleet
 
 go 1.25.0
 
