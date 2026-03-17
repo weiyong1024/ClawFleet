@@ -9,8 +9,7 @@ import (
 )
 
 // EnsureNetwork creates the "clawfleet-net" container network if it does not
-// already exist. Existing containers on the legacy "clawsandbox-net" network
-// continue to work independently.
+// already exist.
 func EnsureNetwork(cli *docker.Client) error {
 	networks, err := cli.ListNetworks()
 	if err != nil {

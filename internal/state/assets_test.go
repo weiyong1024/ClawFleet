@@ -10,7 +10,7 @@ func TestLoadAssetsMarksLegacySlackAssetsUnvalidated(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
 
-	dataDir := filepath.Join(tempHome, ".clawsandbox")
+	dataDir := filepath.Join(tempHome, ".clawfleet")
 	if err := os.MkdirAll(dataDir, 0755); err != nil {
 		t.Fatalf("MkdirAll failed: %v", err)
 	}

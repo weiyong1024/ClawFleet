@@ -20,10 +20,6 @@ const (
 
 	NetworkName  = "clawfleet-net"
 	LabelManaged = "clawfleet.managed"
-
-	// Legacy names for backwards compatibility with existing installations.
-	LegacyNetworkName  = "clawsandbox-net"
-	LegacyLabelManaged = "clawsandbox.managed"
 )
 
 type Config struct {
@@ -92,23 +88,7 @@ func DataDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("getting home dir: %w", err)
 	}
-	newDir := filepath.Join(home, ".clawfleet")
-	oldDir := filepath.Join(home, ".clawsandbox")
-
-	// New path already exists, use it directly.
-	if _, err := os.Stat(newDir); err == nil {
-		return newDir, nil
-	}
-	// Old path exists, auto-migrate.
-	if _, err := os.Stat(oldDir); err == nil {
-		if renameErr := os.Rename(oldDir, newDir); renameErr == nil {
-			return newDir, nil
-		}
-		// Rename failed (cross-filesystem etc.), fall back to old path.
-		return oldDir, nil
-	}
-	// Fresh install.
-	return newDir, nil
+	return filepath.Join(home, ".clawfleet"), nil
 }
 
 func configPath() (string, error) {
