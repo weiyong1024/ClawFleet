@@ -40,6 +40,8 @@ This is a multi-contributor project with rapid iteration. Before planning or sta
 
 Then create a feature branch from the up-to-date main. Never work directly on a stale branch.
 
+**Never push directly to main.** All changes must go through a pull request, even for docs or config-only changes.
+
 ## Build/Test/Lint Commands
 
 ```bash
