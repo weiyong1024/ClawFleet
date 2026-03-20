@@ -156,6 +156,19 @@ The project wiki lives in a separate repo (`git@github.com:weiyong1024/ClawFleet
 - Preset models are defined in `internal/web/static/js/components/model-asset-dialog.js` (`MODEL_PRESETS`). When models change there, update the wiki provider pages and `Dashboard-Guide.md`.
 - Validation logic is in `internal/web/validate.go`. If validation endpoints change, update the corresponding channel/provider troubleshooting sections.
 
+## Promotional Images
+
+Screenshots in `docs/images/` serve dual purposes: README documentation and external promotion (website, social media). When updating screenshots:
+
+1. **Keep filenames stable** — never rename files in `docs/images/`; README references depend on them.
+2. **Sync to all consumers** — `fleet.png` is also used as `demo-dashboard.png` on the website (`clawfleet.github.io`). After updating, copy to the website repo and push both.
+3. **Reflect latest product state** — screenshots must match the current UI. When features are added or styling changes, re-capture all affected screenshots in one batch.
+4. **Image mapping:**
+
+| Source (docs/images/) | External consumer | Notes |
+|---|---|---|
+| `fleet.png` | `clawfleet.github.io/demo-dashboard.png` | Dashboard overview for landing page |
+
 ### When to update the wiki
 
 **You must update the wiki whenever a code change affects user-facing behavior.** Specifically:
