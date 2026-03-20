@@ -1,6 +1,8 @@
 package web
 
 import (
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -9,7 +11,19 @@ import (
 	"time"
 )
 
-var httpClient = &http.Client{Timeout: 15 * time.Second}
+var httpClient = newValidationHTTPClient()
+
+// newValidationHTTPClient creates an HTTP client that uses Go's pure-Go TLS
+// certificate verification instead of delegating to macOS Security framework.
+// This avoids "SecPolicyCreateSSL error: 0" failures that occur when a
+// long-running process's handle to the macOS Security framework becomes stale.
+func newValidationHTTPClient() *http.Client {
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	if pool, err := x509.SystemCertPool(); err == nil {
+		transport.TLSClientConfig = &tls.Config{RootCAs: pool}
+	}
+	return &http.Client{Timeout: 15 * time.Second, Transport: transport}
+}
 
 // ValidateModelKey validates an API key by calling the provider's models endpoint.
 func ValidateModelKey(provider, apiKey, model string) error {

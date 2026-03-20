@@ -22,7 +22,7 @@ endef
 
 build:
 	@mkdir -p $(BUILD_DIR)
-	$(call run-go,"$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY) ./cmd/clawfleet)
+	$(call run-go,env CGO_ENABLED=0 "$$GO_BIN" build -ldflags "$(LDFLAGS)" -o $(BUILD_DIR)/$(BINARY) ./cmd/clawfleet)
 
 build-all:
 	@mkdir -p $(BUILD_DIR)
