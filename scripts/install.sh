@@ -320,10 +320,6 @@ pull_docker_image() {
   step "Pulling sandbox image ${IMAGE_REPO}:${image_tag} (~1.4 GB)..."
   if $DOCKER_CMD pull "${IMAGE_REPO}:${image_tag}"; then
     ok "Image pulled successfully"
-    # Tag as :latest so the Dashboard recognizes it regardless of CLI version string
-    if [ "$image_tag" != "latest" ]; then
-      $DOCKER_CMD tag "${IMAGE_REPO}:${image_tag}" "${IMAGE_REPO}:latest" 2>/dev/null || true
-    fi
   else
     warn "Image pull failed. You can pull later from the Dashboard."
   fi
