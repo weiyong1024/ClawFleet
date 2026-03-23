@@ -36,8 +36,9 @@ RUN mv /usr/bin/chromium /usr/bin/chromium-real \
 
 # ── Layer 2: OpenClaw ─────────────────────────────────────────────────────────
 RUN npm install -g openclaw@latest \
-    && cd /usr/local/lib/node_modules/openclaw/extensions/feishu \
-    && npm install --omit=dev
+    && if [ -d /usr/local/lib/node_modules/openclaw/extensions/feishu ]; then \
+         cd /usr/local/lib/node_modules/openclaw/extensions/feishu && npm install --omit=dev; \
+       fi
 
 # ── Layer 3: Playwright Chromium (build-time, shared path) ───────────────────
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
