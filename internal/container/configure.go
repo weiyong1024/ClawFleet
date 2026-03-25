@@ -121,6 +121,14 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 		}
 	}
 
+	// Enable non-loopback gateway access so the Dashboard console proxy
+	// can reach the Gateway web UI through Docker port mapping.
+	if err := applyConfigSteps(cli, p.ContainerID, "node", []configSetStep{
+		{path: "gateway.controlUi.dangerouslyAllowHostHeaderOriginFallback", value: "true"},
+	}); err != nil {
+		return fmt.Errorf("configure gateway controlUi: %w", err)
+	}
+
 	// Set default model (runs as "node").
 	// OpenClaw expects fully qualified model IDs like "openai/gpt-5.4".
 	// If the user passes a bare model name, prefix it with the provider.
