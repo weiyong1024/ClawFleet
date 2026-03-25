@@ -64,12 +64,25 @@ This single command will:
 4. Start the Dashboard as a background daemon
 5. Open http://localhost:8080 in your browser
 
-On Linux the Dashboard listens on all interfaces (`0.0.0.0:8080`) by default so you can access it remotely. On macOS it binds to `127.0.0.1` (localhost only). To restrict access on Linux to localhost only:
+<details>
+<summary><strong>Linux server deployment notes</strong></summary>
+
+The Dashboard listens on all interfaces (`0.0.0.0:8080`) by default on Linux, so you can access it remotely at `http://<server-ip>:8080`. To restrict to localhost only:
 
 ```bash
 clawfleet dashboard stop
 clawfleet dashboard start --host 127.0.0.1
 ```
+
+The **Control Panel** (OpenClaw's built-in web UI) requires a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts) for WebSocket device identity. On a remote server accessed via plain HTTP, use an SSH tunnel:
+
+```bash
+ssh -L 8080:127.0.0.1:8080 user@your-server
+# Then open http://localhost:8080 in your browser
+```
+
+All other Dashboard features (fleet management, configuration, Restart Bot, etc.) work without a tunnel.
+</details>
 
 > **Manual install?** See the [Getting Started](https://github.com/clawfleet/ClawFleet/wiki/Getting-Started) wiki page.
 
