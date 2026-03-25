@@ -92,12 +92,9 @@ func channelPolicySteps(channel, channelCfg string) []configSetStep {
 
 // Configure runs openclaw CLI commands inside the container to set up the instance.
 func Configure(cli *docker.Client, p ConfigureParams) error {
-	// Stop the gateway if it is already running (reconfigure case).
-	// This prevents config writes from triggering a hot-reload self-restart
-	// that spawns orphan child processes supervisor cannot track (port conflict),
-	// and avoids the gateway reloading with an incomplete intermediate config.
+	// Stop the gateway and its LAN bridge if already running (reconfigure case).
 	_ = dockerExecAs(cli, p.ContainerID, "root", []string{
-		"supervisorctl", "stop", "openclaw",
+		"supervisorctl", "stop", "openclaw", "gateway-bridge",
 	})
 
 	// Onboard with API key (runs as "node" — writes to ~node/.openclaw/)
@@ -119,6 +116,17 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 		if err := InjectSoul(cli, p.ContainerID, *p.Soul); err != nil {
 			return fmt.Errorf("inject soul: %w", err)
 		}
+	}
+
+	// Allow the Dashboard console proxy to access the Gateway web UI:
+	// - auth.mode=none: loopback mode allows no-auth; Dashboard is the security layer.
+	//   OpenClaw onboard auto-generates a token, so we must explicitly override to none.
+	// - allowedOrigins=["*"]: permit WebSocket from any Dashboard host.
+	if err := applyConfigSteps(cli, p.ContainerID, "node", []configSetStep{
+		{path: "gateway.auth", value: `{"mode":"none"}`, strictJSON: true},
+		{path: "gateway.controlUi.allowedOrigins", value: `["*"]`, strictJSON: true},
+	}); err != nil {
+		return fmt.Errorf("configure gateway access: %w", err)
 	}
 
 	// Set default model (runs as "node").
@@ -205,7 +213,7 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 		}
 		// Start gateway with the complete config.
 		if err := dockerExecAs(cli, p.ContainerID, "root", []string{
-			"supervisorctl", "start", "openclaw",
+			"supervisorctl", "start", "openclaw", "gateway-bridge",
 		}); err != nil {
 			return fmt.Errorf("supervisorctl start: %w", err)
 		}
@@ -237,7 +245,7 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 		}
 
 		if err := dockerExecAs(cli, p.ContainerID, "root", []string{
-			"supervisorctl", "start", "openclaw",
+			"supervisorctl", "start", "openclaw", "gateway-bridge",
 		}); err != nil {
 			return fmt.Errorf("supervisorctl start after Slack configure: %w", err)
 		}
@@ -247,7 +255,7 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 	} else if p.Channel != "" && p.ChannelToken != "" {
 		// Telegram/Discord: start gateway → channels add → stop → policies → restart.
 		if err := dockerExecAs(cli, p.ContainerID, "root", []string{
-			"supervisorctl", "start", "openclaw",
+			"supervisorctl", "start", "openclaw", "gateway-bridge",
 		}); err != nil {
 			return fmt.Errorf("supervisorctl start: %w", err)
 		}
@@ -288,7 +296,7 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 
 		// Start gateway with the complete, final config.
 		if err := dockerExecAs(cli, p.ContainerID, "root", []string{
-			"supervisorctl", "start", "openclaw",
+			"supervisorctl", "start", "openclaw", "gateway-bridge",
 		}); err != nil {
 			return fmt.Errorf("supervisorctl start after policies: %w", err)
 		}
@@ -298,7 +306,7 @@ func Configure(cli *docker.Client, p ConfigureParams) error {
 	} else if p.Channel == "" {
 		// No channel — just start the gateway with model-only config.
 		if err := dockerExecAs(cli, p.ContainerID, "root", []string{
-			"supervisorctl", "start", "openclaw",
+			"supervisorctl", "start", "openclaw", "gateway-bridge",
 		}); err != nil {
 			return fmt.Errorf("supervisorctl start: %w", err)
 		}

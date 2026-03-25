@@ -26,11 +26,11 @@ type CreateParams struct {
 func Create(cli *docker.Client, p CreateParams) (string, error) {
 	portBindings := map[docker.Port][]docker.PortBinding{
 		"6901/tcp":  {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.NoVNCPort)}},
-		"18789/tcp": {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.GatewayPort)}},
+		"18790/tcp": {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.GatewayPort)}},
 	}
 	exposedPorts := map[docker.Port]struct{}{
 		"6901/tcp":  {},
-		"18789/tcp": {},
+		"18790/tcp": {},
 	}
 
 	binds := []string{fmt.Sprintf("%s:/home/node/.openclaw", p.DataDir)}

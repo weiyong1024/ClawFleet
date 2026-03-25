@@ -55,7 +55,7 @@ COPY supervisord.conf /etc/supervisor/supervisord.conf
 COPY entrypoint.sh    /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 6901 18789
+EXPOSE 6901 18790
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=60s \
     CMD curl -sf http://localhost:6901/ > /dev/null || exit 1
