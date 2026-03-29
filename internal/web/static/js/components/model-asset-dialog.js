@@ -113,30 +113,14 @@ export function ModelAssetDialog({ model, onClose, onSave, addToast }) {
 
             <label class="form-label">
               ${t('configure.model')}
-              <select class="form-input" value=${isCustom ? '__custom__' : selectedModel}
-                onChange=${(e) => {
-                  if (e.target.value === '__custom__') {
-                    setSelectedModel('');
-                    setCustomModel('');
-                  } else {
-                    setSelectedModel(e.target.value);
-                    setCustomModel('');
-                  }
-                  setValidated(false);
-                }}>
-                ${presets.map(m => html`<option key=${m} value=${m}>${m}</option>`)}
-                <option value="__custom__">${t('assets.customModel')}</option>
-              </select>
+              <input type="text" class="form-input" list=${`models-${provider}`}
+                value=${customModel || selectedModel}
+                onInput=${(e) => { setCustomModel(e.target.value); setSelectedModel(e.target.value); setValidated(false); }}
+                placeholder=${presets[0] || 'model-name'} required />
+              <datalist id=${`models-${provider}`}>
+                ${presets.map(m => html`<option key=${m} value=${m} />`)}
+              </datalist>
             </label>
-
-            ${(isCustom || (!selectedModel && !presets.length)) && html`
-              <label class="form-label">
-                ${t('assets.customModelName')}
-                <input type="text" class="form-input" value=${customModel || selectedModel}
-                  onInput=${(e) => { setCustomModel(e.target.value); setSelectedModel(e.target.value); setValidated(false); }}
-                  placeholder="model-name" required />
-              </label>
-            `}
 
             <div style="margin-top: 12px">
               <button type="button" class="btn btn-configure" onClick=${handleTest}
