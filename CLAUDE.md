@@ -118,6 +118,12 @@ All design decisions, project structure, and code implementation must follow bes
 - Prefer explicit configuration over implicit defaults. If a third-party tool has a default that doesn't suit our use case (e.g. `dmPolicy: "pairing"`), set the desired value explicitly rather than hoping users will figure it out.
 - When orchestrating multi-step processes, respect ordering dependencies and readiness checks (e.g. wait for a service to be healthy before issuing commands against it).
 
+### Version Pinning & Stability Buffer
+- ClawFleet's core value to users is shielding them from OpenClaw's rapid release cadence and potential instability. Every ClawFleet release (e.g. `v0.4.0`) must pin a specific, tested OpenClaw version (`RecommendedOpenClawVersion` in `internal/version/version.go`).
+- The pre-built Docker image on GHCR must contain exactly that pinned version — never `@latest`. CI extracts `RecommendedOpenClawVersion` from source and passes it as the `OPENCLAW_VERSION` build-arg. If this is missing or broken, users get an untested OpenClaw version, defeating the entire purpose of our version management.
+- Before bumping `RecommendedOpenClawVersion`, the new OpenClaw version must be tested end-to-end (instance creation, configuration, bot startup, channel connectivity) on at least one platform.
+- The Dashboard's "Build" flow lets advanced users opt into a different OpenClaw version at their own risk. The "Pull" flow and `install.sh` always deliver the pinned version.
+
 ### Simplicity & Minimal Surface
 - Don't add abstractions, flags, or config options for hypothetical future needs. Solve the current problem directly.
 - Prefer calling existing CLI tools (`docker exec` + `openclaw` CLI) over writing config files directly — this keeps the integration resilient to upstream format changes.
@@ -142,6 +148,12 @@ The output of any tech research should be a clear recommendation: compete / inte
 
 ### Verify Before Handoff
 - After fixing a bug or implementing a feature that affects API/server behavior, smoke-test the change yourself (e.g. `curl` requests to the local server, `docker exec` commands) before asking the user to verify on the UI.
+
+## Growth Strategy Sync
+
+<!-- strategy-bulletin-version: 1 -->
+
+All Marketer-Sessions (growth, content, distribution) MUST re-read `growth/STRATEGY_BULLETIN.md` before every action cycle (writing content, publishing, making distribution decisions). This file contains the live strategy, target user definition, active decisions, and constraints. It is updated by the lead Marketer-Session; the version comment above is bumped on each update to trigger CLAUDE.md change notifications to all running sessions.
 
 ## Wiki Documentation
 

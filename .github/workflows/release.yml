@@ -40,6 +40,12 @@ jobs:
         id: meta
         run: echo "version=${GITHUB_REF_NAME}" >> "$GITHUB_OUTPUT"
 
+      - name: Extract recommended OpenClaw version
+        id: openclaw
+        run: |
+          ver=$(grep 'RecommendedOpenClawVersion =' internal/version/version.go | sed 's/.*"\(.*\)".*/\1/')
+          echo "version=$ver" >> "$GITHUB_OUTPUT"
+
       - uses: docker/login-action@v4
         with:
           registry: ghcr.io
@@ -55,6 +61,8 @@ jobs:
           context: internal/assets/docker
           platforms: linux/amd64,linux/arm64
           push: true
+          build-args: |
+            OPENCLAW_VERSION=${{ steps.openclaw.outputs.version }}
           tags: |
             ghcr.io/clawfleet/clawfleet:${{ steps.meta.outputs.version }}
             ghcr.io/clawfleet/clawfleet:latest

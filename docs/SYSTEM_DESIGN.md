@@ -1,7 +1,6 @@
-# ClawSandbox System Design
+# ClawFleet System Design
 
-> Version: v0.1 (Draft)
-> Date: 2026-03-07
+> Version: v0.4 | Date: 2026-03-30
 
 [中文文档](./SYSTEM_DESIGN.zh-CN.md)
 
@@ -9,282 +8,353 @@
 
 ## 1. Overview
 
-ClawSandbox is a CLI tool that creates and manages multiple isolated OpenClaw instances on a single host machine. Each instance runs in its own Docker container with a full Linux desktop environment, accessible from any browser via noVNC. Users interact with each instance independently through Telegram.
+ClawFleet deploys and manages a fleet of isolated OpenClaw instances on a single machine, from a browser dashboard. Each instance runs in its own Docker container with a full Linux desktop (XFCE4 + TigerVNC + noVNC), accessible from any browser. Users manage their fleet — create instances, configure LLM providers, assign messaging channels, define character personas, and monitor resources — entirely through the web dashboard or CLI.
 
-## 2. System Architecture
+## 2. Architecture Layers
+
+ClawFleet is built on ClawSandbox, a purpose-built infrastructure layer for container orchestration and instance lifecycle management.
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Host Machine (macOS / Linux)              │
-│                                                             │
-│  ┌───────────────────────────────────┐                      │
-│  │        ClawSandbox CLI (Go)       │                      │
-│  │  ┌─────────┬──────────┬────────┐  │                      │
-│  │  │ create  │  list    │ desktop│  │                      │
-│  │  │ start   │  stop    │destroy │  │                      │
-│  │  └─────────┴──────────┴────────┘  │                      │
-│  │  ┌─────────────────────────────┐  │                      │
-│  │  │   Docker Engine SDK (Go)    │  │                      │
-│  │  └──────────────┬──────────────┘  │                      │
-│  │                 │                 │                      │
-│  │  ┌──────────────┴──────────────┐  │                      │
-│  │  │     Port Allocator          │  │                      │
-│  │  │  noVNC: 6901, 6902, ...     │  │                      │
-│  │  │  Gateway: 18789, 18790, ... │  │                      │
-│  │  └─────────────────────────────┘  │                      │
-│  │  ┌─────────────────────────────┐  │                      │
-│  │  │     Instance State Store    │  │                      │
-│  │  │  ~/.clawfleet/state.json  │  │                      │
-│  │  └─────────────────────────────┘  │                      │
-│  └───────────────────────────────────┘                      │
-│                     │ Docker API                            │
-│    ┌────────────────┼────────────────────────┐              │
-│    │                │                        │              │
-│    ▼                ▼                        ▼              │
-│  ┌──────────┐  ┌──────────┐           ┌──────────┐         │
-│  │claw-1 │  │claw-2 │    ...    │claw-N │         │
-│  │          │  │          │           │          │         │
-│  │ XFCE     │  │ XFCE     │           │ XFCE     │         │
-│  │ noVNC    │  │ noVNC    │           │ noVNC    │         │
-│  │ Node≥22  │  │ Node≥22  │           │ Node≥22  │         │
-│  │ Chromium │  │ Chromium │           │ Chromium │         │
-│  │ OpenClaw │  │ OpenClaw │           │ OpenClaw │         │
-│  │ Gateway  │  │ Gateway  │           │ Gateway  │         │
-│  └──────────┘  └──────────┘           └──────────┘         │
-│   :6901/:18789  :6902/:18790           :690N/:1878(8+N)    │
+│                   Browser (Dashboard UI)                     │
+│              Preact SPA @ http://localhost:8080              │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ REST API + WebSocket
+┌──────────────────────────▼──────────────────────────────────┐
+│                  ClawFleet (Product Layer)                    │
+│  internal/web/ + internal/cli/                               │
+│  REST API, WebSocket streams, asset management, skills,      │
+│  i18n, roster, snapshots, daemon management                  │
+├─────────────────────────────────────────────────────────────┤
+│                ClawSandbox (Infrastructure Layer)             │
+│  internal/container/, /state/, /port/, /config/,             │
+│  /assets/, /snapshot/, /version/                             │
+│  Docker orchestration, state persistence, port allocation    │
+└──────────────────────────┬──────────────────────────────────┘
+                           │ Docker API (go-dockerclient)
+┌──────────────────────────▼──────────────────────────────────┐
+│                      Docker Engine                           │
+│  ┌──────────┐  ┌──────────┐           ┌──────────┐          │
+│  │ claw-1   │  │ claw-2   │    ...    │ claw-N   │          │
+│  │ XFCE4    │  │ XFCE4    │           │ XFCE4    │          │
+│  │ noVNC    │  │ noVNC    │           │ noVNC    │          │
+│  │ OpenClaw │  │ OpenClaw │           │ OpenClaw │          │
+│  │ Gateway  │  │ Gateway  │           │ Gateway  │          │
+│  └──────────┘  └──────────┘           └──────────┘          │
+│   :6901/:18789  :6902/:18790           :690N/:1878(8+N)     │
 └─────────────────────────────────────────────────────────────┘
 ```
 
+**Dependency rule:** ClawFleet → ClawSandbox (never reverse).
+
 ## 3. Component Design
 
-### 3.1 ClawSandbox CLI
+### 3.1 CLI
 
-**Stack:**
-- Language: Go 1.25+
-- CLI framework: [cobra](https://github.com/spf13/cobra)
-- Docker integration: [go-dockerclient](https://github.com/fsouza/go-dockerclient)
-- Artifact: single statically-linked binary (darwin/arm64, darwin/amd64, linux/amd64, linux/arm64)
+**Stack:** Go 1.25+, Cobra, go-dockerclient. Single statically-linked binary for darwin/linux × amd64/arm64.
 
 **Commands:**
 
-```
-clawfleet build                       # Build the Docker image
-clawfleet create <N>                  # Create N claw instances
-clawfleet list                        # List all instances and their status
-clawfleet start <name|all>            # Start a stopped instance
-clawfleet stop <name|all>             # Stop a running instance
-clawfleet destroy <name|all>          # Destroy instance (data kept by default)
-clawfleet destroy --purge <name|all>  # Destroy instance and delete its data
-clawfleet desktop <name>              # Open an instance's desktop in the browser
-clawfleet logs <name> [-f]            # View instance logs
-```
+| Group | Command | Description |
+|-------|---------|-------------|
+| Fleet | `create <N>` | Create N instances |
+| | `list` | List all instances with status |
+| | `start <name\|all>` | Start stopped instance(s) |
+| | `stop <name\|all>` | Stop running instance(s) |
+| | `restart <name\|all>` | Restart instance(s) |
+| | `destroy <name\|all> [--purge]` | Destroy instance(s), optionally delete data |
+| | `desktop <name>` | Open noVNC desktop in browser |
+| | `logs <name> [-f]` | View/tail container logs |
+| | `configure <name>` | Interactive configuration wizard |
+| Dashboard | `dashboard serve` | Start web server (foreground) |
+| | `dashboard start [--host --port]` | Start as background daemon |
+| | `dashboard stop` | Stop daemon |
+| | `dashboard restart` | Restart daemon |
+| | `dashboard status` | Check daemon status |
+| Image | `build` | Build Docker image locally |
+| Snapshot | `snapshot save <name>` | Archive instance soul |
+| | `snapshot list` | List saved souls |
+| | `snapshot delete <name>` | Delete saved soul |
+| System | `config` | Show config file |
+| | `version` | Print version info |
 
-**Config file:** `~/.clawfleet/config.yaml`
+### 3.2 Web Dashboard
 
-```yaml
-image:
-  name: "ghcr.io/clawfleet/clawfleet"
-  tag: "latest"
+An embedded Preact SPA served by the Go HTTP server at port 8080.
 
-ports:
-  novnc_start: 6901      # noVNC base port, allocated sequentially
-  gateway_start: 18789   # Gateway base port, allocated sequentially
+**REST API (25+ endpoints):**
 
-resources:
-  memory_limit: "4g"     # Per-container memory cap
-  cpu_limit: "2.0"       # Per-container CPU cap (cores)
+| Category | Endpoints | Purpose |
+|----------|-----------|---------|
+| Instances | `GET/POST /instances`, `POST /{name}/start\|stop`, `DELETE /{name}`, `POST /batch-destroy`, `POST /{name}/configure`, `GET /{name}/configure/status`, `POST /{name}/restart-bot`, `POST /{name}/reset` | Full instance lifecycle |
+| Assets | `GET/POST/PUT/DELETE /assets/models`, `/assets/channels`, `/assets/characters`, `POST /assets/models/test`, `POST /assets/channels/test` | Model, channel, character CRUD with validation |
+| Skills | `GET /{name}/skills`, `POST /{name}/skills/install`, `DELETE /{name}/skills/{slug}`, `GET /skills/search` | Skill management via ClawHub |
+| Snapshots | `GET/POST/DELETE /snapshots` | Soul archival |
+| Image | `GET /image/status`, `POST /image/build`, `POST /image/pull`, `GET /image/openclaw-versions` | Image lifecycle + OpenClaw version selector |
 
-naming:
-  prefix: "claw"      # Instance names: claw-1, claw-2, ...
-```
+**WebSocket streams:**
 
-### 3.2 Docker Image (ghcr.io/clawfleet/clawfleet)
+| Endpoint | Purpose |
+|----------|---------|
+| `/ws/stats` | Real-time CPU/memory per instance |
+| `/ws/logs/{name}` | Live container log stream |
+| `/ws/events` | Lifecycle events (create, start, stop, etc.) |
 
-**Base image:** `node:22-bookworm` — consistent with OpenClaw's official Docker setup.
+**Console proxy:** `/console/{name}` reverse-proxies to the instance's noVNC desktop, enabling embedded desktop access within the Dashboard. Gateway LAN bridge (`0.0.0.0:18790`) allows the proxy to reach the Gateway UI.
+
+**Frontend components (21):** toolbar, sidebar, dashboard, instance-card, instance-desktop, create-dialog, configure-dialog, image-page, logs-viewer, model/channel/character asset pages and dialogs, skills, skill-manager-dialog, snapshots, snapshot-dialog, stats-chart, connection-status, toast.
+
+**i18n:** English and Chinese, switchable from the toolbar.
+
+### 3.3 Docker Image
+
+**Registry:** `ghcr.io/clawfleet/clawfleet`
+
+**Base image:** `node:22-bookworm`
 
 **Layer design:**
 
-```dockerfile
-# Layer 1: System packages + desktop environment
-FROM node:22-bookworm
-
-RUN apt-get update && apt-get install -y \
-    xfce4 xfce4-terminal \
-    tigervnc-standalone-server \
-    novnc websockify \
-    dbus-x11 \
-    chromium \
-    fonts-noto-cjk \
-    supervisor curl wget \
-    && rm -rf /var/lib/apt/lists/*
-
-# Wrap Chromium with --no-sandbox (required inside containers)
-RUN mv /usr/bin/chromium /usr/bin/chromium-real \
-    && printf '#!/bin/sh\nexec /usr/bin/chromium-real --no-sandbox "$@"\n' > /usr/bin/chromium \
-    && chmod +x /usr/bin/chromium
-
-# Layer 2: OpenClaw
-RUN npm install -g openclaw@latest
-
-# Layer 3: Playwright Chromium (installed at build time to avoid runtime downloads)
-ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
-RUN node /usr/local/lib/node_modules/openclaw/node_modules/playwright-core/cli.js install chromium
-
-# Layer 4: Startup configuration
-COPY supervisord.conf /etc/supervisor/supervisord.conf
-COPY entrypoint.sh /entrypoint.sh
-
-EXPOSE 6901 18789
-ENTRYPOINT ["/entrypoint.sh"]
-```
+| Layer | Content | Size |
+|-------|---------|------|
+| 1 | System packages: XFCE4, TigerVNC, noVNC, Chromium, CJK fonts, supervisord | ~800 MB |
+| 2 | OpenClaw: `npm install -g openclaw@${OPENCLAW_VERSION}` + feishu extension | ~300 MB |
+| 3 | Playwright Chromium: pre-installed at `/ms-playwright` | ~300 MB |
+| 4 | Startup config: supervisord.conf + entrypoint.sh | <1 MB |
+| **Total** | | **~1.4 GB** |
 
 **Process management (supervisord):**
 
-| Process | Role | Port |
-|---------|------|------|
-| Xvnc | Virtual framebuffer + VNC server | DISPLAY :1 / 5901 (container-internal) |
-| XFCE4 | Desktop environment | — |
-| noVNC + websockify | VNC → WebSocket proxy | 6901 (host-mapped) |
-| OpenClaw Gateway | Core AI service (manual start) | 18789 (host-mapped) |
+| Process | Role | User | Port | Autostart |
+|---------|------|------|------|-----------|
+| xvnc | VNC server + X11 framebuffer | node | 5901 (internal) | yes |
+| xfce4 | Desktop environment | node | — | yes |
+| novnc | VNC → WebSocket proxy | node | 6901 (host-mapped) | yes |
+| openclaw | Gateway (started after configuration) | node | 18789 (internal) | conditional |
+| gateway-bridge | TCP proxy 18789 → 18790 on 0.0.0.0 | node | 18790 (host-mapped) | conditional |
 
-**entrypoint.sh responsibilities:**
-1. Initialize VNC password (from env var or use default)
-2. Create `.vnc` and `.openclaw` directories, set ownership to `node`
-3. Start supervisord
+**entrypoint.sh:** Creates `.vnc` and `.openclaw` directories, sets VNC password if `$VNC_PASSWORD` is provided, auto-starts OpenClaw if `.configured` marker exists, then launches supervisord.
 
-**Estimated image size:**
-- Base system + XFCE + VNC/noVNC: ~800 MB
-- Node.js 22 + OpenClaw: ~300 MB
-- Playwright Chromium: ~300 MB
-- **Total: ~1.4 GB**
+### 3.4 Asset Management
 
-### 3.3 Port Allocation
+Assets are shared resources that can be assigned to instances.
 
-The CLI maintains a port allocator to avoid conflicts:
+**Model assets:** LLM provider configuration (provider, API key, model name). Supports Anthropic, OpenAI, Google, DeepSeek with preset models. API keys are validated before saving via provider-specific test endpoints. **Models are shared** — multiple instances can use the same model simultaneously.
+
+**Channel assets:** Messaging platform configuration (Telegram bot token, Discord bot token, Slack webhook, Lark App ID + Secret). Credentials are validated before saving. **Channels are exclusive** — each channel can only be assigned to one instance at a time.
+
+**Character assets:** Persona definition (name, role, personality, backstory, quirks, constraints). Rendered into `SOUL.md` Markdown and written to the instance's `~/.openclaw/SOUL.md`. The Gateway hot-reloads this file on change.
+
+### 3.5 Instance Configuration
+
+When a user clicks "Configure" on an instance in the Dashboard, the system applies a multi-step configuration sequence via `docker exec`:
+
+1. Set model provider and API key (`openclaw config set`)
+2. Set model name
+3. Set DM and group policies to "open" and allow all senders
+4. Write channel configuration
+5. Render and write `SOUL.md` (character + roster)
+6. Write `.configured` marker
+7. Start/restart the OpenClaw Gateway process
+
+Configuration status is tracked and reported to the frontend in real-time.
+
+### 3.6 Roster System
+
+The Roster enables bot-to-bot collaboration by injecting team metadata into each instance's `SOUL.md`. Each bot knows who is on the team, what their role is, and when to @mention them.
+
+**Rendering:** When configuring an instance, ClawFleet collects all configured instances' character data, builds a `## Your Team` section with each teammate's name, role, channel, and a one-line description, then appends it to SOUL.md.
+
+**Design principles (prompt-as-code):**
+- Explicit judgment criteria: when to @mention a teammate
+- Negative constraints: when NOT to mention (e.g., don't mention yourself)
+- Dense, scannable format: one line per teammate, not full lore dumps
+
+### 3.7 Skill Management
+
+- **Bundled skills (52):** Ship with OpenClaw. Status depends on binary/environment requirements.
+- **Managed skills:** Installed via `npx clawhub` to `~/.openclaw/skills/`.
+- The Dashboard provides search (via ClawHub API), install, and uninstall operations.
+- ClawHub has rate limits (~20 requests/minute) — errors are handled gracefully.
+
+### 3.8 Snapshot System (Soul Archival)
+
+Snapshots capture an instance's OpenClaw data directory for later reuse:
+
+- **Save:** Copies `~/.clawfleet/data/<name>/openclaw/` to `~/.clawfleet/snapshots/<id>/`, stripping `channels/` and `sessions/` (sensitive/ephemeral data).
+- **Load:** A snapshot can be restored into a new instance.
+- **Metadata:** Name, source instance, creation timestamp stored in `state.json`.
+
+### 3.9 Port Allocation
+
+Sequential allocation from configured base ports:
 
 ```
-Instance   noVNC port   Gateway port
-claw-1  6901         18789
-claw-2  6902         18790
-claw-3  6903         18791
-...
-claw-N  6900+N       18788+N
+Instance   noVNC    Gateway (internal)   Gateway LAN bridge
+claw-1     6901     18789                18789+1=18790 (→ 0.0.0.0)
+claw-2     6902     18790                18791
+claw-N     6900+N   18788+N              18789+N
 ```
 
-Allocation logic:
-- Start from the configured base port, increment until a free port is found
-- Probe availability via `net.Listen` before allocation
-- Allocated ports are recorded in the state file
+Ports are probed via `net.Listen` before allocation to avoid conflicts.
 
-### 3.4 State Management
+### 3.10 State Management
 
-**State file:** `~/.clawfleet/state.json`
+**State file:** `~/.clawfleet/state.json` — metadata cache for instances, assets, and snapshots. Docker is the source of truth for container status; the CLI reconciles on every operation.
 
 ```json
 {
-  "instances": [
-    {
-      "name": "claw-1",
-      "container_id": "abc123...",
-      "status": "running",
-      "ports": {
-        "novnc": 6901,
-        "gateway": 18789
-      },
-      "created_at": "2026-03-07T10:00:00Z"
-    }
-  ]
+  "instances": [{
+    "name": "claw-1",
+    "container_id": "abc123...",
+    "status": "running",
+    "ports": { "novnc": 6901, "gateway": 18789 },
+    "created_at": "2026-03-30T10:00:00Z",
+    "model_asset_id": "anthropic-1",
+    "channel_asset_id": "telegram-1",
+    "character_asset_id": "alice-1"
+  }],
+  "model_assets": [...],
+  "channel_assets": [...],
+  "character_assets": [...],
+  "snapshots": [...]
 }
 ```
 
-The state file is a metadata cache. Docker is the source of truth — the CLI reconciles against the Docker API on every operation.
-
-### 3.5 Data Volumes
-
-Each container gets its own bind-mounted host directory for persistence and isolation:
+### 3.11 Data Volumes
 
 ```
-~/.clawfleet/data/
-├── claw-1/
-│   └── openclaw/     → /home/node/.openclaw inside container
-├── claw-2/
-│   └── openclaw/     → /home/node/.openclaw inside container
-└── claw-3/
-    └── openclaw/     → /home/node/.openclaw inside container
+~/.clawfleet/
+├── config.yaml              # User configuration
+├── state.json               # Instance + asset metadata
+├── serve.pid                # Dashboard daemon PID
+├── logs/                    # Dashboard logs
+├── data/                    # Per-instance data
+│   ├── claw-1/
+│   │   └── openclaw/        → /home/node/.openclaw in container
+│   │       ├── SOUL.md      # Character prompt
+│   │       ├── openclaw.json
+│   │       ├── skills/
+│   │       ├── knowledge/
+│   │       └── sessions/
+│   └── claw-N/
+└── snapshots/               # Saved souls
+    └── <id>/
+        └── openclaw/
 ```
 
-- Data is preserved by default when a container is destroyed
-- `clawfleet destroy --purge` removes the data directory as well
-- Directories are owned by uid 1000 (`node` user), matching the container's user
+Data persists across container restarts. `clawfleet destroy --purge` removes it.
 
-### 3.6 Network Design
+### 3.12 Network Design
 
-**Docker network:**
-- A dedicated bridge network `clawfleet-net` is created on first use
-- Containers can reach each other by name (reserved for future inter-claw communication)
-- Only the noVNC and Gateway ports are bound to the host
+- Bridge network `clawfleet-net` created on first use
+- Containers can reach each other by name (used for inter-instance communication)
+- noVNC port bound to host for desktop access
+- Gateway LAN bridge port (`18790`) bound to `0.0.0.0` for console proxy access
 
-```
-clawfleet-net (bridge)
-├── claw-1 (172.20.0.2)
-├── claw-2 (172.20.0.3)
-└── claw-3 (172.20.0.4)
-```
+## 4. Installation & Deployment
 
-**Host access:**
-- noVNC: `http://localhost:6901` → claw-1 desktop
-- Gateway: accessible at `http://127.0.0.1:18789` from inside the container's Chromium (loopback — not directly exposed to the host user)
-
-## 4. User Workflows
-
-### 4.1 First-time setup
+### 4.1 One-Line Install
 
 ```bash
-# 1. Build the Docker image (once, ~1.4 GB)
-clawfleet build
-
-# 2. Create 3 claws
-clawfleet create 3
-# Output:
-#   Creating claw-1 ... ✓  desktop: http://localhost:6901
-#   Creating claw-2 ... ✓  desktop: http://localhost:6902
-#   Creating claw-3 ... ✓  desktop: http://localhost:6903
-
-# 3. Open a claw's desktop and complete one-time onboarding
-clawfleet desktop claw-1
+curl -fsSL https://raw.githubusercontent.com/clawfleet/ClawFleet/main/scripts/install.sh | sh
 ```
 
-### 4.2 Daily use
+**What it does:**
+1. Detects OS (macOS/Linux) and architecture (amd64/arm64)
+2. Ensures Docker is installed (Colima on macOS, Docker Engine on Linux)
+3. Downloads the latest CLI binary from GitHub Releases (with checksum verification)
+4. Pulls the pre-built Docker image from GHCR (~1.4 GB)
+5. Starts the Dashboard as a background daemon
+6. Opens the browser to `http://localhost:8080`
 
-```bash
-clawfleet list
-# NAME        STATUS    DESKTOP              UPTIME
-# claw-1   running   http://localhost:6901 2d 3h
-# claw-2   running   http://localhost:6902 2d 3h
-# claw-3   stopped   -                    -
+**Options:** `--version <tag>`, `--skip-pull`, `--no-daemon`
 
-clawfleet start claw-3
-clawfleet stop claw-1
-clawfleet logs claw-1
+### 4.2 Daemon Management
+
+The Dashboard runs as a background daemon, managed per platform:
+
+| Platform | Manager | Mechanism |
+|----------|---------|-----------|
+| macOS | launchd | `~/Library/LaunchAgents/com.clawfleet.dashboard.plist` |
+| Linux (non-root) | systemd user service | `~/.config/systemd/user/clawfleet-dashboard.service` |
+| Linux (root) | systemd system service | `/etc/systemd/system/clawfleet-dashboard.service` |
+| Fallback | PID file | `~/.clawfleet/serve.pid` |
+
+**Default bind address:** `127.0.0.1` on macOS (local only), `0.0.0.0` on Linux (remote access).
+
+## 5. Version Management
+
+### 5.1 ClawFleet Version
+
+A single `git tag` locks both the CLI binary and Docker image to the same version.
+
+```
+git tag v0.4.0 && git push origin v0.4.0
+        │
+        ▼
+   GitHub Actions (release.yml)
+   ┌──────────────────────┬────────────────────────────────┐
+   │  release job          │  docker job                     │
+   │  GoReleaser           │  docker/build-push-action       │
+   │  CLI binaries × 4     │  ghcr.io image (multi-arch)     │
+   │  (darwin/linux         │  :v0.4.0 + :latest             │
+   │   × amd64/arm64)      │                                 │
+   └──────────┬────────────┴───────────────┬────────────────┘
+              ▼                            ▼
+       GitHub Release              ghcr.io/clawfleet/clawfleet
 ```
 
-### 4.3 OpenClaw onboarding (inside the container)
+**Version package (`internal/version/`):** `Version`, `GitCommit`, `BuildDate` injected via ldflags. `ImageTag()` derives the Docker image tag — release builds (e.g., `v0.4.0`) use the version tag, dev builds fall back to `latest`.
 
-After opening the noVNC desktop, open the terminal and run:
+### 5.2 OpenClaw Version Locking
 
-```bash
-# Step 1: Run the setup wizard (configure LLM API key, Telegram bot, etc.)
-openclaw onboard --flow quickstart
+The OpenClaw version inside the Docker image is controlled, not left to npm `@latest` at build time.
 
-# Step 2: Start the Gateway
-openclaw gateway --port 18789
+**Single source of truth:** `internal/version/version.go`
+
+```go
+const RecommendedOpenClawVersion = "2026.3.23-2"
 ```
 
-Once the Gateway is running, open Chromium on the desktop and navigate to the URL printed in the terminal (e.g. `http://127.0.0.1:18789/#token=...`) to access the OpenClaw Control UI.
+**How it flows through the system:**
 
-**Future automation (not in v1):** ClawSandbox CLI will automate onboarding — users will only need to supply an API key and Telegram bot token, with no manual desktop interaction required.
+```
+version.go: RecommendedOpenClawVersion = "2026.3.23-2"
+        │
+        ├──→ CI (release.yml)
+        │    Extracted via: grep 'RecommendedOpenClawVersion =' version.go
+        │    Passed as: OPENCLAW_VERSION build-arg to Docker build
+        │    Result: Pre-built GHCR image contains openclaw@2026.3.23-2
+        │
+        ├──→ Dashboard → Build (local)
+        │    Version selector defaults to RecommendedOpenClawVersion
+        │    User can override to any version from npm registry
+        │
+        └──→ Dashboard → Pull
+             Pulls the pre-built GHCR image (version already baked in by CI)
+```
 
-## 5. Resource Budget
+**User experience by path:**
+
+| Path | OpenClaw Version | Determined By |
+|------|-----------------|---------------|
+| `install.sh` (one-line install) | `RecommendedOpenClawVersion` | CI build-arg ← `version.go` |
+| Dashboard → Pull | Same as above | Same pre-built image |
+| Dashboard → Build (local) | User's choice (default: recommended) | Version selector in UI |
+
+**Upgrade workflow:** When a new OpenClaw version is tested and validated, update `RecommendedOpenClawVersion` in `version.go`, cut a new ClawFleet release. The next `install.sh` run or Dashboard Pull will deliver the new version.
+
+### 5.3 Image Naming and Tagging
+
+- **Registry:** `ghcr.io/clawfleet/clawfleet`
+- **Tags:** `:<version>` (e.g., `:v0.4.0`) + `:latest`
+- **Default tag at runtime:** Determined by `version.ImageTag()` — release builds use the version tag, dev builds use `latest`
+
+### 5.4 Auto-Pull on Create
+
+When `clawfleet create` or the Dashboard's create API finds the image missing locally, it automatically attempts `docker pull` from GHCR before failing.
+
+## 6. Resource Budget
 
 Tested on M4 MacBook Air (16 GB RAM, 512 GB SSD):
 
@@ -299,227 +369,200 @@ Tested on M4 MacBook Air (16 GB RAM, 512 GB SSD):
 **Recommendations:**
 - 16 GB host: up to 3 active instances (with Chromium), or 5 light-load instances
 - Default `memory_limit=4g` per container prevents a single runaway instance from affecting the host
-- Adjust limits via `~/.clawfleet/config.yaml`
+- Adjust via `~/.clawfleet/config.yaml`
 
-## 6. Repository Structure
+## 7. Repository Structure
 
 ```
-ClawSandbox/
-├── cmd/
-│   └── clawsandbox/
-│       └── main.go
+ClawFleet/
+├── cmd/clawfleet/              # Binary entry point
+│   └── main.go
 ├── internal/
-│   ├── cli/
-│   │   ├── root.go
-│   │   ├── build.go
-│   │   ├── create.go
-│   │   ├── list.go
-│   │   ├── start.go
-│   │   ├── stop.go
-│   │   ├── destroy.go
-│   │   ├── desktop.go
-│   │   ├── logs.go
-│   │   └── helpers.go
-│   ├── container/
-│   │   ├── client.go
-│   │   ├── manager.go
-│   │   ├── image.go
-│   │   └── network.go
-│   ├── port/
+│   ├── cli/                    # Cobra commands (24 files)
+│   │   ├── root.go             # Root command, registers subcommands
+│   │   ├── create.go           # Instance creation
+│   │   ├── list.go             # Fleet listing
+│   │   ├── start/stop/restart/destroy.go
+│   │   ├── desktop.go          # Open noVNC in browser
+│   │   ├── logs.go             # Container log viewer
+│   │   ├── configure.go        # Interactive configuration wizard
+│   │   ├── dashboard*.go       # Dashboard serve/start/stop/restart/status
+│   │   ├── daemon*.go          # Platform-specific daemon management
+│   │   ├── snapshot*.go        # Snapshot save/list/delete
+│   │   ├── build.go            # Image build command
+│   │   ├── config_show.go      # Show config file
+│   │   └── version.go          # Version display
+│   ├── container/              # Docker orchestration (8 files)
+│   │   ├── client.go           # Docker client init
+│   │   ├── manager.go          # Container lifecycle
+│   │   ├── image.go            # Image build/pull/check/tag
+│   │   ├── configure.go        # Multi-step OpenClaw configuration
+│   │   ├── network.go          # Docker network management
+│   │   ├── skills.go           # Skill install/uninstall
+│   │   └── stats.go            # Resource stats collection
+│   ├── port/                   # Port allocator
 │   │   └── allocator.go
-│   ├── state/
-│   │   └── store.go
-│   ├── config/
+│   ├── state/                  # JSON state persistence
+│   │   ├── store.go            # Instance metadata
+│   │   ├── assets.go           # Model/channel/character assets
+│   │   └── snapshots.go        # Snapshot metadata
+│   ├── config/                 # YAML config loader
 │   │   └── config.go
-│   └── assets/
-│       ├── embed.go
-│       └── docker/
-│           ├── Dockerfile
-│           ├── supervisord.conf
-│           └── entrypoint.sh
+│   ├── assets/                 # Embedded Docker build context
+│   │   ├── embed.go
+│   │   └── docker/
+│   │       ├── Dockerfile
+│   │       ├── supervisord.conf
+│   │       └── entrypoint.sh
+│   ├── snapshot/               # Soul archival logic
+│   │   └── snapshot.go
+│   ├── version/                # Build version info
+│   │   └── version.go          # Version + RecommendedOpenClawVersion
+│   └── web/                    # Web Dashboard (15+ files)
+│       ├── server.go           # HTTP server + PID management
+│       ├── routes.go           # Route registration
+│       ├── embed.go            # Frontend asset embedding
+│       ├── handlers.go         # Instance lifecycle handlers
+│       ├── handlers_assets.go  # Asset CRUD
+│       ├── handlers_configure.go  # Configuration endpoint
+│       ├── handlers_image.go   # Image build/pull/versions
+│       ├── handlers_skills.go  # Skill management
+│       ├── handlers_snapshots.go  # Snapshot CRUD
+│       ├── handlers_console.go # Console proxy (reverse proxy to noVNC)
+│       ├── events.go           # Event bus for real-time updates
+│       ├── ws_stats.go         # WebSocket: resource stats
+│       ├── ws_logs.go          # WebSocket: container logs
+│       ├── ws_events.go        # WebSocket: lifecycle events
+│       ├── validate.go         # LLM/channel credential validation
+│       └── static/             # Embedded frontend
+│           ├── index.html
+│           ├── css/style.css
+│           └── js/
+│               ├── app.js      # Main Preact app
+│               ├── api.js      # REST client
+│               ├── ws.js       # WebSocket manager
+│               ├── i18n.js     # Internationalization
+│               └── components/ # 21 Preact components
+├── scripts/
+│   ├── install.sh              # One-liner install script
+│   └── ensure-go.sh            # Go version bootstrap
 ├── docs/
-│   ├── SYSTEM_DESIGN.md         # English (primary)
-│   └── SYSTEM_DESIGN.zh-CN.md   # Chinese
-├── go.mod
-├── go.sum
-├── Makefile
-├── README.md
-├── README.zh-CN.md
-└── CLAUDE.md
+│   ├── SYSTEM_DESIGN.md
+│   ├── SYSTEM_DESIGN.zh-CN.md
+│   └── images/                 # Screenshots
+├── growth/                     # Marketing materials
+├── .github/workflows/
+│   └── release.yml             # CI/CD pipeline
+├── .goreleaser.yml             # Multi-platform release config
+├── Makefile                    # Build targets
+├── CLAUDE.md                   # AI assistant guide
+├── ROADMAP.md                  # Product roadmap
+├── README.md / README.zh-CN.md
+└── LICENSE                     # MIT
 ```
 
-## 7. Dependencies
+## 8. Dependencies
 
-### Host (ClawSandbox CLI)
+### Host
 | Dependency | Purpose |
 |------------|---------|
 | Go 1.25+ | Compile the CLI |
-| Docker Engine | Container runtime (Docker Desktop for Mac or colima) |
+| Docker Engine | Container runtime (Colima on macOS, Docker Engine on Linux) |
 
 ### Inside each container
 | Dependency | Version | Purpose |
 |------------|---------|---------|
 | Debian Bookworm | 12 | Base OS |
 | Node.js | 22 | OpenClaw runtime |
-| OpenClaw | latest | AI assistant core |
+| OpenClaw | Locked per release | AI assistant core |
 | Chromium (Playwright) | — | Browser automation |
 | XFCE4 | 4.18 | Lightweight desktop |
 | TigerVNC | — | VNC server |
 | noVNC + websockify | — | Browser-accessible VNC client |
-| supervisord | — | Multi-process management inside container |
+| supervisord | — | Multi-process management |
 
 ### Go modules
 | Module | Purpose |
 |--------|---------|
 | `github.com/spf13/cobra` | CLI framework |
 | `github.com/fsouza/go-dockerclient` | Docker Engine API |
+| `github.com/gorilla/websocket` | WebSocket support |
 | `gopkg.in/yaml.v3` | Config file parsing |
 
-## 8. UI Evolution Strategy
+## 9. CI/CD Pipeline
 
-The project uses a phased delivery approach — validate the core before polishing the experience.
+**Trigger:** Push tag matching `v*` (e.g., `v0.4.0`)
 
-### Phase 1: CLI (current)
-All operations via the command line. Goal: a fully functional, production-usable CLI tool.
+**Jobs (parallel):**
 
-### Phase 2: Web UI (before public release)
-After the CLI is stable, add a Web UI for non-technical users:
+| Job | Tool | Output |
+|-----|------|--------|
+| `release` | GoReleaser | 4 CLI binaries (darwin/linux × amd64/arm64) → GitHub Release with checksums |
+| `docker` | docker/build-push-action | Multi-arch image (linux/amd64 + linux/arm64) → GHCR with version tag + `:latest` |
 
-- **Fleet management panel**: a web server on the host provides a unified overview page (create/start/stop/destroy instances, view status)
-- **Instance configuration**: each claw gets its own settings page (LLM provider, Telegram bot, model selection) — no desktop terminal needed for onboarding
-- **Desktop access**: embedded or linked noVNC view per instance
+The `docker` job extracts `RecommendedOpenClawVersion` from `internal/version/version.go` and passes it as the `OPENCLAW_VERSION` build-arg, ensuring the pre-built image contains the tested OpenClaw version.
 
-The CLI is always kept as the primary interface for advanced users and automation.
+**Release workflow:**
 
-## 9. Scope
+```bash
+# 1. Update RecommendedOpenClawVersion if needed
+# 2. Tag and push
+git tag v0.5.0
+git push origin v0.5.0
+# CI handles: binary builds, image build+push, GitHub Release creation
+```
 
-### Phase 1 MVP (CLI)
+## 10. Configuration
 
-- [x] Docker image build (Dockerfile + supervisord + entrypoint)
-- [x] `build` — build the Docker image
-- [x] `create N` — create N container instances
-- [x] `list` — list all instances with live status from Docker
-- [x] `start` / `stop` — start and stop instances
-- [x] `destroy [--purge]` — destroy instances, optionally purging data
-- [x] `desktop` — open noVNC desktop in browser
-- [x] `logs [-f]` — tail instance logs
-- [x] Automatic port allocation with conflict detection
-- [x] Per-instance data volume persistence
+**File:** `~/.clawfleet/config.yaml`
 
-### Phase 2 (Web UI)
-- [ ] Fleet management panel (web server)
-- [ ] Per-instance configuration pages (LLM / Telegram / etc.)
-- [ ] Automated OpenClaw onboarding
+```yaml
+image:
+  name: "ghcr.io/clawfleet/clawfleet"
+  tag: "v0.4.0"             # Determined by version.ImageTag()
 
-**Out of scope (future):**
-- Inter-claw group chat and task delegation
-- Instance templates / preset configurations
-- Remote host support
+ports:
+  novnc_start: 6901         # Sequential: 6901, 6902, ...
+  gateway_start: 18789      # Sequential: 18789, 18790, ...
 
-## 10. Validation
+resources:
+  memory_limit: "4g"        # Per-container
+  cpu_limit: 2.0            # Per-container (cores)
+
+naming:
+  prefix: "claw"            # Instance names: claw-1, claw-2, ...
+```
+
+## 11. Validation
+
+### End-to-end (one-line install)
+```bash
+# Fresh machine
+curl -fsSL https://raw.githubusercontent.com/clawfleet/ClawFleet/main/scripts/install.sh | sh
+# → Docker installed, CLI downloaded, image pulled, Dashboard running at :8080
+
+# Verify OpenClaw version inside the image
+docker exec claw-1 npm list -g openclaw
+# → Should show RecommendedOpenClawVersion
+```
 
 ### Build validation
 ```bash
-make build
-clawfleet build
+make build && make test
 ```
 
-### End-to-end validation
+### Manual lifecycle
 ```bash
-# 1. Create 2 instances
 clawfleet create 2
-
-# 2. Confirm containers are running
 clawfleet list
-
-# 3. Open desktop
-clawfleet desktop claw-1
-# → Browser opens http://localhost:6901 showing XFCE desktop
-
-# 4. Complete onboarding inside the container
-openclaw onboard --flow quickstart
-openclaw gateway --port 18789
-# → Open Chromium, navigate to printed URL, confirm Control UI loads
-
-# 5. Stop / start (verify data persistence)
 clawfleet stop claw-1
 clawfleet start claw-1
-# → ~/.openclaw data survives container restart
-
-# 6. Destroy
+# → Data persists across restarts
 clawfleet destroy claw-2
-clawfleet list
-# → claw-2 no longer listed
 ```
 
 ### Resource validation
 ```bash
 docker stats claw-1 claw-2
-# → Confirm memory stays within memory_limit
-```
-
-## 11. Version Management
-
-A single `git tag` locks both the CLI binary and Docker image to the same version, with automated publishing to GitHub Release and GHCR.
-
-### Architecture
-
-```
-git tag v0.1.0 && git push origin v0.1.0
-        │
-        ▼
-   GitHub Actions
-   ┌──────────────────┬──────────────────────┐
-   │  GoReleaser       │  Docker Build+Push    │
-   │  CLI binaries x4  │  ghcr.io image        │
-   │  (darwin/linux    │  :0.1.0 + :latest     │
-   │   x amd64/arm64) │                        │
-   └────────┬─────────┴──────────┬─────────────┘
-            ▼                    ▼
-     GitHub Release         ghcr.io/clawfleet/clawfleet
-```
-
-### Shared version package (`internal/version/`)
-
-Version metadata (`Version`, `GitCommit`, `BuildDate`) is injected at build time via ldflags into `internal/version`. Both `internal/cli/version.go` and `internal/config/config.go` import from this shared package.
-
-The `ImageTag()` helper derives the Docker image tag from the CLI version:
-- Release build (e.g. `v0.1.0`): returns `0.1.0`
-- Dev build (no tag): returns `latest`
-
-### Image naming and tagging
-
-- **Registry**: `ghcr.io/clawfleet/clawfleet`
-- **Default tag**: determined at runtime via `version.ImageTag()`
-- `clawfleet build` tags the image with both `:<version>` and `:latest`
-- `clawfleet create` uses `:<version>` to ensure CLI-image version consistency
-
-### Auto-pull on create
-
-When `clawfleet create` (or the Dashboard's create action) finds the image missing locally, it automatically attempts `docker pull` from GHCR before failing. Users with internet access never need to run `clawfleet build`.
-
-```
-image not found locally
-  → docker pull ghcr.io/clawfleet/clawfleet:0.1.0
-  → success? proceed with create
-  → fail? suggest `clawfleet build`
-```
-
-### CI pipeline (`.github/workflows/release.yml`)
-
-Triggered on `v*` tag push. Two parallel jobs:
-
-| Job | Tool | Output |
-|-----|------|--------|
-| `release` | GoReleaser | 4 CLI binaries → GitHub Release |
-| `docker` | docker/build-push-action | Image → `ghcr.io/clawfleet/clawfleet:<version>` + `:latest` |
-
-### Release workflow (for maintainers)
-
-```bash
-git checkout main
-git pull origin main
-git tag v0.1.0
-git push origin v0.1.0
-# CI handles the rest
+# → Memory within memory_limit
 ```
