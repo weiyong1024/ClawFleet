@@ -14,18 +14,22 @@ import (
 	"github.com/clawfleet/clawfleet/internal/state"
 )
 
-var destroyPurge bool
+var (
+	destroyPurge bool
+	destroyForce bool
+)
 
 var destroyCmd = &cobra.Command{
 	Use:     "destroy <name|all>",
 	Short:   "Destroy a claw instance (data is kept by default)",
 	Args:    cobra.ExactArgs(1),
-	Example: "  clawfleet destroy claw-1\n  clawfleet destroy all --purge",
+	Example: "  clawfleet destroy claw-1\n  clawfleet destroy all --purge\n  clawfleet destroy claw-1 -f --purge",
 	RunE:    runDestroy,
 }
 
 func init() {
 	destroyCmd.Flags().BoolVar(&destroyPurge, "purge", false, "Also delete instance data from disk")
+	destroyCmd.Flags().BoolVarP(&destroyForce, "force", "f", false, "Skip confirmation prompt")
 }
 
 func runDestroy(cmd *cobra.Command, args []string) error {
@@ -39,7 +43,7 @@ func runDestroy(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("no instance found: %s", args[0])
 	}
 
-	if len(targets) > 1 || destroyPurge {
+	if !destroyForce && (len(targets) > 1 || destroyPurge) {
 		purgeNote := ""
 		if destroyPurge {
 			purgeNote = " (and their data)"

@@ -188,6 +188,19 @@ install_docker_linux() {
     sudo service docker start 2>/dev/null || true
   fi
 
+  # If official Docker install failed, fallback to distro package
+  sleep 3
+  if ! docker info >/dev/null 2>&1 && ! sudo docker info >/dev/null 2>&1; then
+    warn "Official Docker install incomplete, trying distro package..."
+    sudo apt-get update -qq 2>/dev/null
+    sudo apt-get install -y docker.io 2>&1 | tail -3
+    if command -v systemctl >/dev/null 2>&1; then
+      sudo systemctl enable --now docker 2>/dev/null || true
+    else
+      sudo service docker start 2>/dev/null || true
+    fi
+  fi
+
   # Add user to docker group
   if ! groups | grep -q docker; then
     sudo usermod -aG docker "$USER" 2>/dev/null || true
