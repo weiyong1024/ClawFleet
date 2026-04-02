@@ -1,6 +1,6 @@
 # ClawFleet System Design
 
-> Version: v0.4 | Date: 2026-03-30
+> Version: v0.9 | Date: 2026-04-02
 
 [中文文档](./SYSTEM_DESIGN.zh-CN.md)
 
@@ -88,6 +88,7 @@ An embedded Preact SPA served by the Go HTTP server at port 8080.
 |----------|-----------|---------|
 | Instances | `GET/POST /instances`, `POST /{name}/start\|stop`, `DELETE /{name}`, `POST /batch-destroy`, `POST /{name}/configure`, `GET /{name}/configure/status`, `POST /{name}/restart-bot`, `POST /{name}/reset` | Full instance lifecycle |
 | Assets | `GET/POST/PUT/DELETE /assets/models`, `/assets/channels`, `/assets/characters`, `POST /assets/models/test`, `POST /assets/channels/test` | Model, channel, character CRUD with validation |
+| OAuth | `POST /oauth/codex/start`, `POST /oauth/codex/callback`, `GET /oauth/codex/poll` | Codex OAuth flow (start → callback relay → poll for result) |
 | Skills | `GET /{name}/skills`, `POST /{name}/skills/install`, `DELETE /{name}/skills/{slug}`, `GET /skills/search` | Skill management via ClawHub |
 | Snapshots | `GET/POST/DELETE /snapshots` | Soul archival |
 | Image | `GET /image/status`, `POST /image/build`, `POST /image/pull`, `GET /image/openclaw-versions` | Image lifecycle + OpenClaw version selector |
@@ -138,13 +139,68 @@ An embedded Preact SPA served by the Go HTTP server at port 8080.
 
 Assets are shared resources that can be assigned to instances.
 
-**Model assets:** LLM provider configuration (provider, API key, model name). Supports Anthropic, OpenAI, Google, DeepSeek with preset models. API keys are validated before saving via provider-specific test endpoints. **Models are shared** — multiple instances can use the same model simultaneously.
+**Model assets:** LLM provider configuration. Supports ChatGPT (Codex) via OAuth, plus Anthropic, OpenAI, Google, DeepSeek via API keys. API keys are validated before saving via provider-specific test endpoints. **Models are shared** — multiple instances can use the same model simultaneously.
 
 **Channel assets:** Messaging platform configuration (Telegram bot token, Discord bot token, Slack webhook, Lark App ID + Secret). Credentials are validated before saving. **Channels are exclusive** — each channel can only be assigned to one instance at a time.
 
 **Character assets:** Persona definition (name, role, personality, backstory, quirks, constraints). Rendered into `SOUL.md` Markdown and written to the instance's `~/.openclaw/SOUL.md`. The Gateway hot-reloads this file on change.
 
-### 3.5 Instance Configuration
+### 3.5 Codex OAuth (ChatGPT Subscription Login)
+
+Users with a ChatGPT Plus/Pro subscription can authenticate via OAuth instead of API keys. This is the recommended and default provider.
+
+**Protocol:** OAuth 2.0 Authorization Code + PKCE, using OpenClaw's registered client ID with OpenAI.
+
+**Architecture: Stateless :1455 Relay**
+
+The OAuth callback URI is hardcoded to `http://localhost:1455/auth/callback` (registered by OpenClaw with OpenAI, immutable). ClawFleet runs a stateless relay server on port 1455 to handle callbacks.
+
+```
+Dashboard (:8080 or :8081 via tunnel)       :1455 Relay (stateless)
+┌─────────────────────────┐                 ┌──────────────────────┐
+│ POST /oauth/codex/start │                 │ GET /auth/callback   │
+│  → generate PKCE        │                 │  → serve static HTML │
+│  → store verifier       │                 │  → JS reads code +   │
+│  → return auth_url with │                 │    state from URL    │
+│    state=<nonce>.<origin>│                 │  → JS forwards to   │
+│                         │                 │    <origin>/callback │
+│ POST /oauth/codex/callback               │                      │
+│  → exchange code+verifier│◄───── fetch ───│                      │
+│  → store tokens as asset │                │                      │
+│                         │                 │                      │
+│ GET /oauth/codex/poll   │                 │                      │
+│  → return result to UI  │                 │                      │
+└─────────────────────────┘                 └──────────────────────┘
+```
+
+**Key design: the relay is stateless.** It serves a single HTML page that reads `code` and `state` from the URL query, parses the Dashboard origin from the state parameter (`<nonce>.<origin>`), and forwards the code via `fetch()` to that Dashboard's `/api/v1/oauth/codex/callback` endpoint. The actual token exchange and PKCE verification happen on the Dashboard API, not on the relay.
+
+**Multi-Dashboard coexistence:** Because the relay is stateless and the Dashboard origin is encoded in the state parameter, a single :1455 listener correctly routes callbacks to any Dashboard — local (:8080) or remote (:8081 via SSH tunnel).
+
+```
+Scenario: local Dashboard (:8080) + remote Dashboard (:8081 via SSH tunnel)
+
+Local Dashboard starts :1455 relay on boot.
+SSH tunnel tries to bind :1455 → fails (already in use) → harmless warning.
+
+User logs in from :8080 → state="abc.http://localhost:8080"
+  → callback hits local :1455 → relay forwards to :8080 ✓
+
+User logs in from :8081 → state="def.http://localhost:8081"
+  → callback hits local :1455 → relay forwards to :8081 (→ tunnel → remote) ✓
+
+If no local Dashboard is running:
+  SSH tunnel binds :1455 → remote Dashboard's relay handles callbacks ✓
+```
+
+**Container configuration for Codex:** Unlike API key providers that use `openclaw onboard --<provider>-api-key`, Codex uses:
+1. `openclaw onboard --auth-choice skip` (creates workspace without auth)
+2. Direct write to `auth-profiles.json` with OAuth tokens (access, refresh, expires, accountId)
+3. `openclaw models set openai-codex/<model>`
+
+OpenClaw handles token refresh internally at runtime using the stored refresh token.
+
+### 3.6 Instance Configuration
 
 When a user clicks "Configure" on an instance in the Dashboard, the system applies a multi-step configuration sequence via `docker exec`:
 
@@ -158,7 +214,7 @@ When a user clicks "Configure" on an instance in the Dashboard, the system appli
 
 Configuration status is tracked and reported to the frontend in real-time.
 
-### 3.6 Roster System
+### 3.7 Roster System
 
 The Roster enables bot-to-bot collaboration by injecting team metadata into each instance's `SOUL.md`. Each bot knows who is on the team, what their role is, and when to @mention them.
 
@@ -169,14 +225,14 @@ The Roster enables bot-to-bot collaboration by injecting team metadata into each
 - Negative constraints: when NOT to mention (e.g., don't mention yourself)
 - Dense, scannable format: one line per teammate, not full lore dumps
 
-### 3.7 Skill Management
+### 3.8 Skill Management
 
 - **Bundled skills (52):** Ship with OpenClaw. Status depends on binary/environment requirements.
 - **Managed skills:** Installed via `npx clawhub` to `~/.openclaw/skills/`.
 - The Dashboard provides search (via ClawHub API), install, and uninstall operations.
 - ClawHub has rate limits (~20 requests/minute) — errors are handled gracefully.
 
-### 3.8 Snapshot System (Soul Archival)
+### 3.9 Snapshot System (Soul Archival)
 
 Snapshots capture an instance's OpenClaw data directory for later reuse:
 
@@ -184,7 +240,7 @@ Snapshots capture an instance's OpenClaw data directory for later reuse:
 - **Load:** A snapshot can be restored into a new instance.
 - **Metadata:** Name, source instance, creation timestamp stored in `state.json`.
 
-### 3.9 Port Allocation
+### 3.10 Port Allocation
 
 Sequential allocation from configured base ports:
 
@@ -197,7 +253,7 @@ claw-N     6900+N   18788+N              18789+N
 
 Ports are probed via `net.Listen` before allocation to avoid conflicts.
 
-### 3.10 State Management
+### 3.11 State Management
 
 **State file:** `~/.clawfleet/state.json` — metadata cache for instances, assets, and snapshots. Docker is the source of truth for container status; the CLI reconciles on every operation.
 
@@ -220,7 +276,7 @@ Ports are probed via `net.Listen` before allocation to avoid conflicts.
 }
 ```
 
-### 3.11 Data Volumes
+### 3.12 Data Volumes
 
 ```
 ~/.clawfleet/
@@ -244,7 +300,7 @@ Ports are probed via `net.Listen` before allocation to avoid conflicts.
 
 Data persists across container restarts. `clawfleet destroy --purge` removes it.
 
-### 3.12 Network Design
+### 3.13 Network Design
 
 - Bridge network `clawfleet-net` created on first use
 - Containers can reach each other by name (used for inter-instance communication)
@@ -433,6 +489,7 @@ ClawFleet/
 │       ├── ws_stats.go         # WebSocket: resource stats
 │       ├── ws_logs.go          # WebSocket: container logs
 │       ├── ws_events.go        # WebSocket: lifecycle events
+│       ├── oauth_codex.go      # Codex OAuth flow + :1455 relay server
 │       ├── validate.go         # LLM/channel credential validation
 │       └── static/             # Embedded frontend
 │           ├── index.html
