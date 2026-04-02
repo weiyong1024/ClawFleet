@@ -1,6 +1,6 @@
 # ClawFleet 系统设计文档
 
-> 版本: v0.4 | 日期: 2026-03-30
+> 版本: v0.9 | 日期: 2026-04-02
 
 [English](./SYSTEM_DESIGN.md)
 
@@ -138,13 +138,68 @@ ClawFleet 构建于 ClawSandbox 之上，后者是专为容器编排和实例生
 
 资产是可分配给实例的共享资源。
 
-**模型资产：** LLM 供应商配置（供应商、API Key、模型名）。支持 Anthropic、OpenAI、Google、DeepSeek 预设模型。保存前通过供应商特定的测试端点验证 API Key。**模型是共享的** — 多个实例可同时使用同一模型。
+**模型资产：** LLM 供应商配置。支持 ChatGPT (Codex) OAuth 登录，以及 Anthropic、OpenAI、Google、DeepSeek API Key 认证。保存前通过供应商特定的测试端点验证。**模型是共享的** — 多个实例可同时使用同一模型。
 
 **渠道资产：** 消息平台配置（Telegram bot token、Discord bot token、Slack webhook、Lark App ID + Secret）。保存前验证凭证。**渠道是独占的** — 每个渠道只能分配给一个实例。
 
 **角色资产：** 人设定义（名称、角色、性格、背景、特点、约束）。渲染为 `SOUL.md` Markdown 并写入实例的 `~/.openclaw/SOUL.md`。Gateway 会在文件变更时热加载。
 
-### 3.5 实例配置
+### 3.5 Codex OAuth（ChatGPT 订阅登录）
+
+拥有 ChatGPT Plus/Pro 订阅的用户可以通过 OAuth 登录，无需 API Key。这是默认推荐的供应商。
+
+**协议：** OAuth 2.0 Authorization Code + PKCE，使用 OpenClaw 在 OpenAI 注册的 Client ID。
+
+**架构：无状态 :1455 中继**
+
+OAuth 回调 URI 固定为 `http://localhost:1455/auth/callback`（OpenClaw 在 OpenAI 注册，不可更改）。ClawFleet 在端口 1455 运行无状态中继服务器处理回调。
+
+```
+Dashboard (:8080 或 :8081 via tunnel)       :1455 中继（无状态）
+┌─────────────────────────┐                 ┌──────────────────────┐
+│ POST /oauth/codex/start │                 │ GET /auth/callback   │
+│  → 生成 PKCE            │                 │  → 返回静态 HTML     │
+│  → 存储 verifier        │                 │  → JS 从 URL 读取   │
+│  → 返回 auth_url，      │                 │    code + state      │
+│    state=<nonce>.<origin>│                 │  → JS 转发到         │
+│                         │                 │    <origin>/callback │
+│ POST /oauth/codex/callback               │                      │
+│  → 用 code+verifier 换 token│◄── fetch ──│                      │
+│  → 存储 token 为模型资产 │                 │                      │
+│                         │                 │                      │
+│ GET /oauth/codex/poll   │                 │                      │
+│  → 返回结果给前端       │                 │                      │
+└─────────────────────────┘                 └──────────────────────┘
+```
+
+**核心设计：中继是无状态的。** 它只提供一个 HTML 页面，从 URL 读取 `code` 和 `state`，解析 state 中编码的 Dashboard 地址（`<nonce>.<origin>`），通过 `fetch()` 将 code 转发到对应 Dashboard 的 `/api/v1/oauth/codex/callback`。实际的 token 交换和 PKCE 验证在 Dashboard API 上完成，不在中继上。
+
+**多 Dashboard 共存：** 由于中继无状态且 Dashboard 地址编码在 state 中，单个 :1455 监听器可以正确路由回调到任何 Dashboard——本地 (:8080) 或远程 (:8081 via SSH tunnel)。
+
+```
+场景：本地 Dashboard (:8080) + 远程 Dashboard (:8081 via SSH tunnel)
+
+本地 Dashboard 启动时开启 :1455 中继。
+SSH tunnel 尝试绑定 :1455 → 失败（已被占用）→ 无害警告。
+
+用户从 :8080 登录 → state="abc.http://localhost:8080"
+  → 回调到本地 :1455 → 中继转发到 :8080 ✓
+
+用户从 :8081 登录 → state="def.http://localhost:8081"
+  → 回调到本地 :1455 → 中继转发到 :8081（→ tunnel → 远端）✓
+
+如果本地没有 Dashboard 运行：
+  SSH tunnel 绑定 :1455 → 远端 Dashboard 的中继处理回调 ✓
+```
+
+**容器配置 Codex 流程：** 与 API Key 供应商使用 `openclaw onboard --<provider>-api-key` 不同，Codex 使用：
+1. `openclaw onboard --auth-choice skip`（创建 workspace，跳过认证）
+2. 直接写入 `auth-profiles.json`（含 access、refresh、expires、accountId）
+3. `openclaw models set openai-codex/<model>`
+
+OpenClaw 运行时通过存储的 refresh token 自动刷新过期的 access token。
+
+### 3.6 实例配置
 
 用户在 Dashboard 中点击"配置"时，系统通过 `docker exec` 执行多步配置序列：
 
@@ -158,7 +213,7 @@ ClawFleet 构建于 ClawSandbox 之上，后者是专为容器编排和实例生
 
 配置状态实时跟踪并报告给前端。
 
-### 3.6 花名册系统
+### 3.7 花名册系统
 
 花名册通过向每个实例的 `SOUL.md` 注入团队元数据来实现 bot 间协作。每个 bot 知道团队里有谁、角色是什么、什么时候应该 @对方。
 
@@ -169,14 +224,14 @@ ClawFleet 构建于 ClawSandbox 之上，后者是专为容器编排和实例生
 - 否定约束：何时不应该提及（如不要提及自己）
 - 信息密集、易于扫描：每个队友一行，不做长篇叙述
 
-### 3.7 技能管理
+### 3.8 技能管理
 
 - **内置技能（52 个）：** 随 OpenClaw 一起发布。状态取决于二进制/环境依赖。
 - **托管技能：** 通过 `npx clawhub` 安装到 `~/.openclaw/skills/`。
 - Dashboard 提供搜索（通过 ClawHub API）、安装和卸载操作。
 - ClawHub 有速率限制（~20 次/分钟）— 错误会被优雅处理。
 
-### 3.8 快照系统（灵魂归档）
+### 3.9 快照系统（灵魂归档）
 
 快照捕获实例的 OpenClaw 数据目录以供后续复用：
 
@@ -184,7 +239,7 @@ ClawFleet 构建于 ClawSandbox 之上，后者是专为容器编排和实例生
 - **加载：** 快照可恢复到新实例。
 - **元数据：** 名称、来源实例、创建时间戳存储在 `state.json` 中。
 
-### 3.9 端口分配
+### 3.10 端口分配
 
 从配置的基础端口顺序分配：
 
@@ -197,7 +252,7 @@ claw-N     6900+N   18788+N          18789+N
 
 分配前通过 `net.Listen` 探测端口可用性，避免冲突。
 
-### 3.10 状态管理
+### 3.11 状态管理
 
 **状态文件：** `~/.clawfleet/state.json` — 实例、资产和快照的元数据缓存。容器实际状态以 Docker 为准；CLI 每次操作时与 Docker API 对账。
 
@@ -220,7 +275,7 @@ claw-N     6900+N   18788+N          18789+N
 }
 ```
 
-### 3.11 数据卷
+### 3.12 数据卷
 
 ```
 ~/.clawfleet/
@@ -244,7 +299,7 @@ claw-N     6900+N   18788+N          18789+N
 
 容器重启后数据保留。`clawfleet destroy --purge` 可同时删除。
 
-### 3.12 网络设计
+### 3.13 网络设计
 
 - Bridge 网络 `clawfleet-net` 在首次使用时创建
 - 容器可通过容器名互相访问（用于实例间通信）
