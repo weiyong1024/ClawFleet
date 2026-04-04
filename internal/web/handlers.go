@@ -3,6 +3,7 @@ package web
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -105,9 +106,13 @@ func (s *Server) handleCreateInstances(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !exists {
-		writeError(w, http.StatusPreconditionFailed, fmt.Sprintf(
-			"Image %s not found. Build the image via System → Image in the Dashboard, or run 'clawfleet build'.", cfg.ImageRef()))
-		return
+		log.Printf("Image %s not found locally, pulling from registry...", cfg.ImageRef())
+		if err := container.PullImage(s.docker, cfg.Image.Name, cfg.Image.Tag, io.Discard); err != nil {
+			writeError(w, http.StatusPreconditionFailed, fmt.Sprintf(
+				"Image %s not found locally and pull failed: %v", cfg.ImageRef(), err))
+			return
+		}
+		log.Printf("Image %s pulled successfully", cfg.ImageRef())
 	}
 
 	if err := container.EnsureNetwork(s.docker); err != nil {
