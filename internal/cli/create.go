@@ -28,7 +28,7 @@ var createCmd = &cobra.Command{
 }
 
 func init() {
-	createCmd.Flags().BoolVar(&pullFlag, "pull", false, "Force re-pull image even if found locally")
+	createCmd.Flags().BoolVar(&pullFlag, "pull", false, "Force re-pull image from registry (even if already present locally)")
 	createCmd.Flags().StringVar(&fromSnapshotFlag, "from-snapshot", "", "Create instance from a saved snapshot")
 }
 
@@ -48,21 +48,21 @@ func runCreate(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	// Check image exists
+	// Check image exists; auto-pull if missing, force-pull if --pull flag set.
 	exists, err := container.ImageExists(cli, cfg.ImageRef())
 	if err != nil {
 		return err
 	}
-	if !exists {
-		if pullFlag {
+	if !exists || pullFlag {
+		if !exists {
 			fmt.Printf("Image %s not found locally, pulling from registry...\n", cfg.ImageRef())
-			if pullErr := container.PullImage(cli, cfg.Image.Name, cfg.Image.Tag, os.Stdout); pullErr != nil {
-				return fmt.Errorf("pull failed: %v\nRun 'clawfleet build' to build it manually", pullErr)
-			}
-			fmt.Println("Image pulled successfully.")
 		} else {
-			return fmt.Errorf("Image %s not found. Run 'clawfleet build' or build via Dashboard.\nUse --pull to pull from the registry instead.", cfg.ImageRef())
+			fmt.Printf("Pulling latest %s from registry...\n", cfg.ImageRef())
 		}
+		if pullErr := container.PullImage(cli, cfg.Image.Name, cfg.Image.Tag, os.Stdout); pullErr != nil {
+			return fmt.Errorf("pull failed: %v\nRun 'clawfleet build' to build it manually", pullErr)
+		}
+		fmt.Println("Image pulled successfully.")
 	}
 
 	// Ensure network
