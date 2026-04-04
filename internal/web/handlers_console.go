@@ -9,12 +9,22 @@ import (
 )
 
 // handleConsoleProxy reverse-proxies requests to an instance's OpenClaw Gateway
-// web UI. The gateway runs in loopback mode (no auth required) and a TCP bridge
-// (gateway-bridge) on port 18790 exposes it for Docker port mapping.
+// web UI. This is a fallback for remote Dashboard access (e.g. via SSH tunnel)
+// where the Gateway port is not directly reachable. For local access, the
+// Dashboard opens the Gateway's native port directly (see app.js onConsole).
 //
 // Route: /console/{name}/* → http://127.0.0.1:{gateway_port}/*
 func (s *Server) handleConsoleProxy(w http.ResponseWriter, r *http.Request) {
 	name := r.PathValue("name")
+
+	// Redirect /console/{name} → /console/{name}/ so relative paths resolve
+	// correctly (e.g. ./assets/xxx.js → /console/{name}/assets/xxx.js).
+	// Skip redirect for WebSocket upgrades — they don't follow redirects.
+	isWS := strings.EqualFold(r.Header.Get("Upgrade"), "websocket")
+	if !isWS && !strings.HasSuffix(r.URL.Path, "/") && !strings.Contains(r.URL.Path[strings.LastIndex(r.URL.Path, "/")+1:], ".") {
+		http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+		return
+	}
 
 	store, err := s.loadStore()
 	if err != nil {

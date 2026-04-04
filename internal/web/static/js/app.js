@@ -146,7 +146,12 @@ function App() {
   };
 
   const onConsole = (name) => {
-    window.open(`/console/${name}/`, '_blank');
+    const inst = instances.find(i => i.name === name);
+    if (inst && inst.gateway_port) {
+      window.open(`http://localhost:${inst.gateway_port}/`, '_blank');
+    } else {
+      window.open(`/console/${name}/`, '_blank');
+    }
   };
 
   const onRestartBot = async (name) => {
