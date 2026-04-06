@@ -1,6 +1,6 @@
 # ClawFleet 系统设计文档
 
-> 版本: v0.9 | 日期: 2026-04-02
+> 版本: v0.9.4 | 日期: 2026-04-06
 
 [English](./SYSTEM_DESIGN.md)
 
@@ -100,7 +100,11 @@ ClawFleet 构建于 ClawSandbox 之上，后者是专为容器编排和实例生
 | `/ws/logs/{name}` | 实时容器日志 |
 | `/ws/events` | 生命周期事件（创建、启动、停止等） |
 
-**控制台代理：** `/console/{name}` 反向代理到实例的 noVNC 桌面，在 Dashboard 内嵌入桌面访问。Gateway LAN bridge（`0.0.0.0:18790`）使代理能够访问 Gateway UI。
+**控制面板：** 本地访问时，点击 "Control Panel" 直接打开 Gateway 原生端口（`http://localhost:{gateway_port}/`）。每个实例独立端口 → 独立浏览器 origin → localStorage 天然隔离。多个 Control Panel tab 互不干扰。
+
+**控制台代理（远程后备）：** `/console/{name}/` 反向代理到实例的 Gateway UI。用于远程 Dashboard 访问（如 SSH tunnel）时 Gateway 端口不可直达的场景。无尾部斜杠的请求 301 重定向（WebSocket 升级请求豁免）。
+
+**创建时自动拉取：** `POST /instances` 或 `clawfleet create` 发现本地缺少对应 tag 的镜像时，自动从 GHCR 拉取。消除 binary 升级后镜像不匹配的摩擦。CLI 支持 `--pull` 强制重新拉取。
 
 **前端组件（21 个）：** toolbar、sidebar、dashboard、instance-card、instance-desktop、create-dialog、configure-dialog、image-page、logs-viewer、model/channel/character 资产页面和对话框、skills、skill-manager-dialog、snapshots、snapshot-dialog、stats-chart、connection-status、toast。
 
@@ -138,7 +142,7 @@ ClawFleet 构建于 ClawSandbox 之上，后者是专为容器编排和实例生
 
 资产是可分配给实例的共享资源。
 
-**模型资产：** LLM 供应商配置。支持 ChatGPT (Codex) OAuth 登录，以及 Anthropic、OpenAI、Google、DeepSeek API Key 认证。保存前通过供应商特定的测试端点验证。**模型是共享的** — 多个实例可同时使用同一模型。
+**模型资产：** LLM 供应商配置。支持 ChatGPT (Codex) OAuth 登录，以及 Anthropic、OpenAI、Google AI Studio、DeepSeek API Key 认证。保存前通过供应商特定的测试端点验证。**模型是共享的** — 多个实例可同时使用同一模型。
 
 **渠道资产：** 消息平台配置（Telegram bot token、Discord bot token、Slack webhook、Lark App ID + Secret）。保存前验证凭证。**渠道是独占的** — 每个渠道只能分配给一个实例。
 
@@ -172,7 +176,11 @@ Dashboard (:8080 或 :8081 via tunnel)       :1455 中继（无状态）
 └─────────────────────────┘                 └──────────────────────┘
 ```
 
-**核心设计：中继是无状态的。** 它只提供一个 HTML 页面，从 URL 读取 `code` 和 `state`，解析 state 中编码的 Dashboard 地址（`<nonce>.<origin>`），通过 `fetch()` 将 code 转发到对应 Dashboard 的 `/api/v1/oauth/codex/callback`。实际的 token 交换和 PKCE 验证在 Dashboard API 上完成，不在中继上。
+**核心设计：中继无状态，Dashboard 有状态。** :1455 中继只提供一个 HTML 页面，从 URL 读取 `code` 和 `state`，解析 Dashboard 地址（`<nonce>.<origin>`），通过 `fetch()` 转发。中继不持有任何状态。
+
+Dashboard API 在内存中维护 pending OAuth flows 的 map（以 nonce 为 key），每个 flow 存储 PKCE verifier、选择的模型和 5 分钟 TTL。收到回调后，Dashboard 查找 verifier、交换 token、创建模型资产。Flow 在 poll 或超时后清理。
+
+**Token 安全：** 返回模型资产给前端时，Dashboard 剥离 `OAuthRefresh`（机密），保留 `OAuthAccountID`（不透明标识，用于 UI 展示）。Refresh token 永远不离开后端。
 
 **多 Dashboard 共存：** 由于中继无状态且 Dashboard 地址编码在 state 中，单个 :1455 监听器可以正确路由回调到任何 Dashboard——本地 (:8080) 或远程 (:8081 via SSH tunnel)。
 
@@ -213,6 +221,22 @@ OpenClaw 运行时通过存储的 refresh token 自动刷新过期的 access tok
 
 配置状态实时跟踪并报告给前端。
 
+**供应商名称映射：** ClawFleet 在 UI 中使用统一名称，但映射到 OpenClaw onboard CLI 时有差异：
+- `google` → `--gemini-api-key`（OpenClaw 用 "gemini" 而非 "google"）
+- 其他供应商（`anthropic`、`openai`、`deepseek`）直接映射
+
+**按渠道策略配置：** OpenClaw 各渠道插件的配置 schema 不同，ClawFleet 做统一处理：
+- 所有渠道：`allowFrom=["*"]`、`dmPolicy/groupPolicy="open"`
+- Discord/Lark：`allowBots="mentions"`
+- Slack：`allowBots=true`（布尔值，非字符串）
+- Telegram：额外设置 `groupAllowFrom=["*"]`
+
+**Bot 名称解析：** 配置时从 Discord/Slack 平台 API 获取 bot 显示名称，注入 agent identity 配置，用于文本 @mention 检测。Lark/飞书使用原生平台 mention，跳过解析。
+
+**Gateway 健康同步：** 配置流程中每次 `supervisorctl start` 后，轮询 Gateway `/health` 端点，1 秒间隔，30 秒超时，确保后续步骤在 Gateway 就绪后执行。
+
+**实例重置：** `POST /instances/{name}/reset` 清除 OpenClaw 配置（`openclaw.json`、`agents/`、`sessions/`、`channels/`、`.configured`），保留 Docker 容器。重启容器清理 V8 缓存。释放已分配的渠道资产，触发其他运行实例的花名册刷新。
+
 ### 3.7 花名册系统
 
 花名册通过向每个实例的 `SOUL.md` 注入团队元数据来实现 bot 间协作。每个 bot 知道团队里有谁、角色是什么、什么时候应该 @对方。
@@ -223,6 +247,17 @@ OpenClaw 运行时通过存储的 refresh token 自动刷新过期的 access tok
 - 明确的判断标准：何时 @队友
 - 否定约束：何时不应该提及（如不要提及自己）
 - 信息密集、易于扫描：每个队友一行，不做长篇叙述
+
+**花名册同步：** 以下事件触发所有其他 *运行中* 实例的 SOUL.md 刷新：
+1. 实例被配置（新队友加入）
+2. 实例被销毁或重置（队友离开）
+3. 实例被启动（补齐停机期间的 fleet 变更）
+
+刷新是 best-effort 的——错误记日志但不影响主操作。停止的实例在重启后才会收到更新。
+
+**SOUL.md 路径：** 写入 `/home/node/.openclaw/workspace/SOUL.md`（workspace 目录）。Gateway 监听此文件变更并热加载，无需重启。
+
+**批量销毁：** `POST /instances/batch-destroy` 接受实例名列表，单次 state 加载/保存。单个失败不阻断其他实例。所有删除完成后统一触发花名册刷新。
 
 ### 3.8 技能管理
 
@@ -311,7 +346,7 @@ claw-N     6900+N   18788+N          18789+N
 ### 4.1 一键安装
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/clawfleet/ClawFleet/main/scripts/install.sh | sh
+curl -fsSL https://clawfleet.io/install.sh | sh
 ```
 
 **流程：**
@@ -368,18 +403,18 @@ Docker 镜像内的 OpenClaw 版本是受控的，不依赖构建时 npm 的 `@l
 **单一真相源：** `internal/version/version.go`
 
 ```go
-const RecommendedOpenClawVersion = "2026.3.23-2"
+const RecommendedOpenClawVersion = "2026.4.1"
 ```
 
 **版本流转：**
 
 ```
-version.go: RecommendedOpenClawVersion = "2026.3.23-2"
+version.go: RecommendedOpenClawVersion = "2026.4.1"
         │
         ├──→ CI (release.yml)
         │    提取方式：grep 'RecommendedOpenClawVersion =' version.go
         │    传递方式：OPENCLAW_VERSION build-arg → Docker 构建
-        │    结果：预构建 GHCR 镜像包含 openclaw@2026.3.23-2
+        │    结果：预构建 GHCR 镜像包含 openclaw@2026.4.1
         │
         ├──→ Dashboard → Build（本地构建）
         │    版本选择器默认值 = RecommendedOpenClawVersion
@@ -593,7 +628,7 @@ naming:
 ### 端到端（一键安装）
 ```bash
 # 全新机器
-curl -fsSL https://raw.githubusercontent.com/clawfleet/ClawFleet/main/scripts/install.sh | sh
+curl -fsSL https://clawfleet.io/install.sh | sh
 # → Docker 已安装、CLI 已下载、镜像已拉取、Dashboard 运行在 :8080
 
 # 验证镜像内 OpenClaw 版本

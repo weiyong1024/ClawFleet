@@ -1,6 +1,6 @@
 # ClawFleet System Design
 
-> Version: v0.9 | Date: 2026-04-02
+> Version: v0.9.4 | Date: 2026-04-06
 
 [中文文档](./SYSTEM_DESIGN.zh-CN.md)
 
@@ -101,7 +101,11 @@ An embedded Preact SPA served by the Go HTTP server at port 8080.
 | `/ws/logs/{name}` | Live container log stream |
 | `/ws/events` | Lifecycle events (create, start, stop, etc.) |
 
-**Console proxy:** `/console/{name}` reverse-proxies to the instance's noVNC desktop, enabling embedded desktop access within the Dashboard. Gateway LAN bridge (`0.0.0.0:18790`) allows the proxy to reach the Gateway UI.
+**Control Panel:** For local access, clicking "Control Panel" opens the Gateway's native port directly (`http://localhost:{gateway_port}/`). Each instance runs on its own port → its own browser origin → localStorage is naturally isolated between tabs. This ensures multiple Control Panel tabs never share session state.
+
+**Console proxy (remote fallback):** `/console/{name}/` reverse-proxies to the instance's Gateway UI via the LAN bridge. Used when the Dashboard is accessed remotely (e.g. via SSH tunnel) and Gateway ports aren't directly reachable. Requests without trailing slash are 301-redirected (except WebSocket upgrades, which bypass the redirect).
+
+**Auto-pull on create:** When `POST /instances` or `clawfleet create` finds the expected image tag missing locally, it automatically pulls from GHCR before creating the instance. This removes friction when the binary is upgraded but the image hasn't been re-pulled. The CLI also supports `--pull` to force re-pull even when the image exists.
 
 **Frontend components (21):** toolbar, sidebar, dashboard, instance-card, instance-desktop, create-dialog, configure-dialog, image-page, logs-viewer, model/channel/character asset pages and dialogs, skills, skill-manager-dialog, snapshots, snapshot-dialog, stats-chart, connection-status, toast.
 
@@ -139,7 +143,7 @@ An embedded Preact SPA served by the Go HTTP server at port 8080.
 
 Assets are shared resources that can be assigned to instances.
 
-**Model assets:** LLM provider configuration. Supports ChatGPT (Codex) via OAuth, plus Anthropic, OpenAI, Google, DeepSeek via API keys. API keys are validated before saving via provider-specific test endpoints. **Models are shared** — multiple instances can use the same model simultaneously.
+**Model assets:** LLM provider configuration. Supports ChatGPT (Codex) via OAuth, plus Anthropic, OpenAI, Google AI Studio, DeepSeek via API keys. API keys are validated before saving via provider-specific test endpoints. **Models are shared** — multiple instances can use the same model simultaneously.
 
 **Channel assets:** Messaging platform configuration (Telegram bot token, Discord bot token, Slack webhook, Lark App ID + Secret). Credentials are validated before saving. **Channels are exclusive** — each channel can only be assigned to one instance at a time.
 
@@ -173,7 +177,11 @@ Dashboard (:8080 or :8081 via tunnel)       :1455 Relay (stateless)
 └─────────────────────────┘                 └──────────────────────┘
 ```
 
-**Key design: the relay is stateless.** It serves a single HTML page that reads `code` and `state` from the URL query, parses the Dashboard origin from the state parameter (`<nonce>.<origin>`), and forwards the code via `fetch()` to that Dashboard's `/api/v1/oauth/codex/callback` endpoint. The actual token exchange and PKCE verification happen on the Dashboard API, not on the relay.
+**Key design: the relay is stateless, the Dashboard is stateful.** The :1455 relay serves a single HTML page that reads `code` and `state` from the URL, parses the Dashboard origin from state (`<nonce>.<origin>`), and forwards the code via `fetch()` to that Dashboard's `/api/v1/oauth/codex/callback`. The relay holds no state.
+
+The Dashboard API maintains an in-memory map of pending OAuth flows (keyed by nonce), each storing the PKCE verifier, selected model, and a 5-minute TTL. When the callback arrives, the Dashboard looks up the verifier, exchanges the code for tokens, and creates the model asset. Flows are cleaned up after poll or timeout.
+
+**Token security:** When returning model assets to the frontend, the Dashboard strips `OAuthRefresh` (secret) but preserves `OAuthAccountID` (opaque hint for UI display). Refresh tokens never leave the backend.
 
 **Multi-Dashboard coexistence:** Because the relay is stateless and the Dashboard origin is encoded in the state parameter, a single :1455 listener correctly routes callbacks to any Dashboard — local (:8080) or remote (:8081 via SSH tunnel).
 
@@ -214,6 +222,22 @@ When a user clicks "Configure" on an instance in the Dashboard, the system appli
 
 Configuration status is tracked and reported to the frontend in real-time.
 
+**Provider name mapping:** ClawFleet presents unified provider names in the UI but maps them for OpenClaw's onboard CLI:
+- `google` → `--gemini-api-key` (OpenClaw uses "gemini" not "google")
+- All others (`anthropic`, `openai`, `deepseek`) map directly
+
+**Per-channel policy configuration:** OpenClaw channel plugins have different config schemas. ClawFleet normalizes them:
+- All channels: `allowFrom=["*"]`, `dmPolicy/groupPolicy="open"`
+- Discord/Lark: `allowBots="mentions"` (text-based mention detection)
+- Slack: `allowBots=true` (boolean, not string — schema difference)
+- Telegram: additional `groupAllowFrom=["*"]`
+
+**Bot name resolution:** For Discord and Slack, ClawFleet resolves the bot's display name from the platform API at configuration time and injects it into the agent identity config. This enables text @mention detection. Lark/Feishu uses native platform mentions, so resolution is skipped.
+
+**Gateway health synchronization:** After each `supervisorctl start` during configuration, ClawFleet polls the Gateway's `/health` endpoint every 1 second until it responds or 30 seconds elapse. This ensures subsequent steps operate on a ready Gateway.
+
+**Instance reset:** `POST /instances/{name}/reset` purges the instance's OpenClaw configuration (`openclaw.json`, `agents/`, `sessions/`, `channels/`, `.configured` marker) while preserving the Docker container. The container is restarted to clear Node.js V8 caches. Reset releases any assigned channel asset (allowing reassignment) and triggers roster refresh for other running instances.
+
 ### 3.7 Roster System
 
 The Roster enables bot-to-bot collaboration by injecting team metadata into each instance's `SOUL.md`. Each bot knows who is on the team, what their role is, and when to @mention them.
@@ -224,6 +248,17 @@ The Roster enables bot-to-bot collaboration by injecting team metadata into each
 - Explicit judgment criteria: when to @mention a teammate
 - Negative constraints: when NOT to mention (e.g., don't mention yourself)
 - Dense, scannable format: one line per teammate, not full lore dumps
+
+**Roster synchronization:** SOUL.md is refreshed in all other *running* instances when any of these events occur:
+1. An instance is configured (new teammate joins the fleet)
+2. An instance is destroyed or reset (teammate leaves)
+3. An instance is started (catches up with fleet changes during downtime)
+
+Refresh is best-effort — errors are logged but do not fail the primary operation. Stopped instances do not receive roster updates until restarted.
+
+**SOUL.md path:** Character data is written to `/home/node/.openclaw/workspace/SOUL.md` (the workspace directory). The Gateway watches this file and hot-reloads character data without restart.
+
+**Batch destroy:** `POST /instances/batch-destroy` accepts a list of instance names and destroys them in a single state load/save cycle. Individual failures do not block others (partial success). Roster refresh is triggered once after all deletions complete.
 
 ### 3.8 Skill Management
 
@@ -312,7 +347,7 @@ Data persists across container restarts. `clawfleet destroy --purge` removes it.
 ### 4.1 One-Line Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/clawfleet/ClawFleet/main/scripts/install.sh | sh
+curl -fsSL https://clawfleet.io/install.sh | sh
 ```
 
 **What it does:**
@@ -369,7 +404,7 @@ The OpenClaw version inside the Docker image is controlled, not left to npm `@la
 **Single source of truth:** `internal/version/version.go`
 
 ```go
-const RecommendedOpenClawVersion = "2026.3.23-2"
+const RecommendedOpenClawVersion = "2026.4.1"
 ```
 
 **How it flows through the system:**
@@ -380,7 +415,7 @@ version.go: RecommendedOpenClawVersion = "2026.3.23-2"
         ├──→ CI (release.yml)
         │    Extracted via: grep 'RecommendedOpenClawVersion =' version.go
         │    Passed as: OPENCLAW_VERSION build-arg to Docker build
-        │    Result: Pre-built GHCR image contains openclaw@2026.3.23-2
+        │    Result: Pre-built GHCR image contains openclaw@2026.4.1
         │
         ├──→ Dashboard → Build (local)
         │    Version selector defaults to RecommendedOpenClawVersion
@@ -595,7 +630,7 @@ naming:
 ### End-to-end (one-line install)
 ```bash
 # Fresh machine
-curl -fsSL https://raw.githubusercontent.com/clawfleet/ClawFleet/main/scripts/install.sh | sh
+curl -fsSL https://clawfleet.io/install.sh | sh
 # → Docker installed, CLI downloaded, image pulled, Dashboard running at :8080
 
 # Verify OpenClaw version inside the image
