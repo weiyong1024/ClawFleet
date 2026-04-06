@@ -44,7 +44,7 @@ make test
 
 ## Architecture
 
-See [CLAUDE.md](CLAUDE.md) for the full architecture overview. Key rule: `ClawFleet (web/, cli/) → ClawSandbox (container/, state/, port/, config/)` — never reverse the dependency.
+See [CLAUDE.md](CLAUDE.md) for the full architecture overview. Key rule: product layer (web/, cli/) → infrastructure layer (container/, state/, port/, config/) — never reverse the dependency.
 
 ## Community
 

@@ -12,7 +12,7 @@ ClawFleet deploys and manages a fleet of isolated OpenClaw instances on a single
 
 ## 2. Architecture Layers
 
-ClawFleet is built on ClawSandbox, a purpose-built infrastructure layer for container orchestration and instance lifecycle management.
+ClawFleet has two layers: the product layer (web dashboard, CLI, asset management) and the infrastructure layer (container orchestration, state persistence, port allocation).
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -26,7 +26,7 @@ ClawFleet is built on ClawSandbox, a purpose-built infrastructure layer for cont
 │  REST API, WebSocket streams, asset management, skills,      │
 │  i18n, roster, snapshots, daemon management                  │
 ├─────────────────────────────────────────────────────────────┤
-│                ClawSandbox (Infrastructure Layer)             │
+│                Infrastructure Layer                           │
 │  internal/container/, /state/, /port/, /config/,             │
 │  /assets/, /snapshot/, /version/                             │
 │  Docker orchestration, state persistence, port allocation    │
@@ -45,7 +45,7 @@ ClawFleet is built on ClawSandbox, a purpose-built infrastructure layer for cont
 └─────────────────────────────────────────────────────────────┘
 ```
 
-**Dependency rule:** ClawFleet → ClawSandbox (never reverse).
+**Dependency rule:** Product layer → Infrastructure layer (never reverse).
 
 ## 3. Component Design
 
