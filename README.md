@@ -23,7 +23,7 @@ curl -fsSL https://clawfleet.io/install.sh | sh
 
 10 minutes: Docker installed, image pulled, dashboard running at `http://localhost:8080`. Log in with your ChatGPT account — your existing Plus subscription covers inference, no API keys needed.
 
-[![Install Demo](https://img.shields.io/badge/▶_Install_Demo-30s-red?style=for-the-badge&logo=youtube)](https://youtu.be/FSxC2vUQ-6k)
+[![Install Demo](https://img.youtube.com/vi/FSxC2vUQ-6k/maxresdefault.jpg)](https://youtu.be/FSxC2vUQ-6k)
 
 ---
 

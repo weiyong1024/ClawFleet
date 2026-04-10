@@ -23,7 +23,7 @@ curl -fsSL https://clawfleet.io/install.sh | sh
 
 10 分钟：Docker 自动安装、镜像拉取完毕、Dashboard 在 `http://localhost:8080` 运行。用 ChatGPT 账号登录——已有的 Plus 订阅即可驱动推理，无需 API Key。
 
-[![安装演示](https://img.shields.io/badge/▶_安装演示-30秒-red?style=for-the-badge&logo=youtube)](https://youtu.be/FSxC2vUQ-6k)
+[![安装演示](https://img.youtube.com/vi/FSxC2vUQ-6k/maxresdefault.jpg)](https://youtu.be/FSxC2vUQ-6k)
 
 ---
 
