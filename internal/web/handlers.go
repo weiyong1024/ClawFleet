@@ -20,20 +20,28 @@ import (
 
 // instanceResponse is the JSON representation of a single instance.
 type instanceResponse struct {
-	Name             string    `json:"name"`
-	Status           string    `json:"status"`
-	NoVNC            int       `json:"novnc_port"`
-	Gateway          int       `json:"gateway_port"`
-	CreatedAt        time.Time `json:"created_at"`
-	ModelAssetID     string    `json:"model_asset_id,omitempty"`
-	ChannelAssetID   string    `json:"channel_asset_id,omitempty"`
-	CharacterAssetID string    `json:"character_asset_id,omitempty"`
-	ModelName        string    `json:"model_name,omitempty"`
-	ChannelName      string    `json:"channel_name,omitempty"`
-	CharacterName    string    `json:"character_name,omitempty"`
+	Name                string    `json:"name"`
+	Status              string    `json:"status"`
+	NoVNC               int       `json:"novnc_port"`
+	Gateway             int       `json:"gateway_port"`
+	CreatedAt           time.Time `json:"created_at"`
+	ModelAssetID        string    `json:"model_asset_id,omitempty"`
+	ChannelAssetID      string    `json:"channel_asset_id,omitempty"`
+	CharacterAssetID    string    `json:"character_asset_id,omitempty"`
+	ModelName           string    `json:"model_name,omitempty"`
+	ChannelName         string    `json:"channel_name,omitempty"`
+	CharacterName       string    `json:"character_name,omitempty"`
+	RuntimeType         string    `json:"runtime_type"`
+	HermesDashboardPort int       `json:"hermes_dashboard_port,omitempty"`
+	HermesGatewayPort   int       `json:"hermes_gateway_port,omitempty"`
 }
 
 func instanceToResponse(inst state.Instance, assets *state.AssetStore) instanceResponse {
+	runtimeType := inst.RuntimeType
+	if runtimeType == "" {
+		runtimeType = "openclaw"
+	}
+
 	resp := instanceResponse{
 		Name:             inst.Name,
 		Status:           inst.Status,
@@ -43,7 +51,14 @@ func instanceToResponse(inst state.Instance, assets *state.AssetStore) instanceR
 		ModelAssetID:     inst.ModelAssetID,
 		ChannelAssetID:   inst.ChannelAssetID,
 		CharacterAssetID: inst.CharacterAssetID,
+		RuntimeType:      runtimeType,
 	}
+
+	if runtimeType == "hermes" {
+		resp.HermesDashboardPort = inst.Ports.NoVNC
+		resp.HermesGatewayPort = inst.Ports.Gateway
+	}
+
 	if assets != nil {
 		if m := assets.GetModel(inst.ModelAssetID); m != nil {
 			resp.ModelName = m.Name
@@ -85,6 +100,7 @@ func (s *Server) handleListInstances(w http.ResponseWriter, r *http.Request) {
 type createRequest struct {
 	Count        int    `json:"count"`
 	SnapshotName string `json:"snapshot_name,omitempty"`
+	RuntimeType  string `json:"runtime_type,omitempty"`
 }
 
 // handleCreateInstances creates N new instances.
@@ -101,19 +117,35 @@ func (s *Server) handleCreateInstances(w http.ResponseWriter, r *http.Request) {
 
 	cfg := s.config
 
-	exists, err := container.ImageExists(s.docker, cfg.ImageRef())
+	runtimeType := req.RuntimeType
+	if runtimeType == "" {
+		runtimeType = "openclaw"
+	}
+
+	var imageRef, imageName, imageTag string
+	if runtimeType == "hermes" {
+		imageRef = cfg.HermesImageRef()
+		imageName = cfg.Hermes.ImageName
+		imageTag = cfg.Hermes.ImageTag
+	} else {
+		imageRef = cfg.ImageRef()
+		imageName = cfg.Image.Name
+		imageTag = cfg.Image.Tag
+	}
+
+	exists, err := container.ImageExists(s.docker, imageRef)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if !exists {
-		log.Printf("Image %s not found locally, pulling from registry...", cfg.ImageRef())
-		if err := container.PullImage(s.docker, cfg.Image.Name, cfg.Image.Tag, io.Discard); err != nil {
+		log.Printf("Image %s not found locally, pulling from registry...", imageRef)
+		if err := container.PullImage(s.docker, imageName, imageTag, io.Discard); err != nil {
 			writeError(w, http.StatusPreconditionFailed, fmt.Sprintf(
-				"Image %s not found locally and pull failed: %v", cfg.ImageRef(), err))
+				"Image %s not found locally and pull failed: %v", imageRef, err))
 			return
 		}
-		log.Printf("Image %s pulled successfully", cfg.ImageRef())
+		log.Printf("Image %s pulled successfully", imageRef)
 	}
 
 	if err := container.EnsureNetwork(s.docker); err != nil {
@@ -158,9 +190,18 @@ func (s *Server) handleCreateInstances(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		instanceDataDir := filepath.Join(dataDir, "data", name, "openclaw")
+		dataSuffix := "openclaw"
+		if runtimeType == "hermes" {
+			dataSuffix = "hermes"
+		}
+		instanceDataDir := filepath.Join(dataDir, "data", name, dataSuffix)
 		if err := os.MkdirAll(instanceDataDir, 0755); err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+
+		if req.SnapshotName != "" && runtimeType == "hermes" {
+			writeError(w, http.StatusBadRequest, "Soul Archive is not supported for Hermes instances")
 			return
 		}
 
@@ -174,12 +215,13 @@ func (s *Server) handleCreateInstances(w http.ResponseWriter, r *http.Request) {
 
 		containerID, err := container.Create(s.docker, container.CreateParams{
 			Name:        name,
-			ImageRef:    cfg.ImageRef(),
+			ImageRef:    imageRef,
 			NoVNCPort:   novncPort,
 			GatewayPort: gatewayPort,
 			DataDir:     instanceDataDir,
 			MemoryBytes: memBytes,
 			NanoCPUs:    nanoCPUs,
+			RuntimeType: runtimeType,
 		})
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
@@ -197,6 +239,7 @@ func (s *Server) handleCreateInstances(w http.ResponseWriter, r *http.Request) {
 			Status:      "running",
 			Ports:       state.Ports{NoVNC: novncPort, Gateway: gatewayPort},
 			CreatedAt:   time.Now(),
+			RuntimeType: runtimeType,
 		}
 		store.Add(inst)
 		if err := store.Save(); err != nil {
@@ -430,6 +473,11 @@ func (s *Server) handleResetInstance(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, fmt.Sprintf("instance %s not found", name))
 		return
 	}
+	if inst.IsHermes() {
+		writeError(w, http.StatusBadRequest,
+			"Not available for Hermes instances. Use the Hermes Dashboard.")
+		return
+	}
 
 	// Stop openclaw gateway if running.
 	status, _, _ := container.Status(s.docker, inst.ContainerID)
@@ -534,6 +582,11 @@ func (s *Server) handleRestartBot(w http.ResponseWriter, r *http.Request) {
 	inst := store.Get(name)
 	if inst == nil {
 		writeError(w, http.StatusNotFound, fmt.Sprintf("instance %s not found", name))
+		return
+	}
+	if inst.IsHermes() {
+		writeError(w, http.StatusBadRequest,
+			"Not available for Hermes instances. Use the Hermes Dashboard.")
 		return
 	}
 	if inst.Status != "running" {

@@ -20,7 +20,7 @@ async function request(method, path, body) {
 export const api = {
   // Instances
   listInstances:  ()            => request('GET',    '/instances'),
-  createInstances:(count, snapshotName) => request('POST', '/instances', { count, ...(snapshotName && { snapshot_name: snapshotName }) }),
+  createInstances:(count, snapshotName, runtimeType) => request('POST', '/instances', { count, ...(snapshotName && { snapshot_name: snapshotName }), ...(runtimeType && runtimeType !== 'openclaw' && { runtime_type: runtimeType }) }),
   startInstance:  (name)        => request('POST',   `/instances/${encodeURIComponent(name)}/start`),
   stopInstance:   (name)        => request('POST',   `/instances/${encodeURIComponent(name)}/stop`),
   destroyInstance:(name)        => request('DELETE',  `/instances/${encodeURIComponent(name)}`),

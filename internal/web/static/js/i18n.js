@@ -26,9 +26,13 @@ const messages = {
     'card.resume':           '▶ Resume',
     'card.destroy':          '🗑 Destroy',
     'card.unconfigured':     'Not configured',
+    'card.hermesUnconfigured': 'Configure in Dashboard →',
     'status.suspended':      'suspended',
 
     'create.title':          'Create Instances',
+    'create.runtime':        'Runtime',
+    'create.runtimeOpenClaw':'🦞 OpenClaw',
+    'create.runtimeHermes':  '☤ Hermes',
     'create.label':          'Number of instances',
     'create.hint':           'Each instance uses ~4 GB RAM and 2 CPU cores.',
     'create.cancel':         'Cancel',
@@ -153,6 +157,7 @@ const messages = {
     'skills.searchHint':     'Search 13,000+ community skills on ClawHub',
     'skills.requiresRunning':'Instance must be running to manage skills.',
     'card.skills':           'Skills',
+    'card.hermesDashboard':  '⚕ Dashboard',
 
     // Characters
     'sidebar.characters':    'Character Config',
@@ -250,9 +255,13 @@ const messages = {
     'card.resume':           '▶ 复位',
     'card.destroy':          '🗑 销毁',
     'card.unconfigured':     '未配置',
+    'card.hermesUnconfigured': '在 Dashboard 中配置 →',
     'status.suspended':      '挂起中',
 
     'create.title':          '创建实例',
+    'create.runtime':        '运行时',
+    'create.runtimeOpenClaw':'🦞 OpenClaw',
+    'create.runtimeHermes':  '☤ Hermes',
     'create.label':          '实例数量',
     'create.hint':           '每个实例约占用 4 GB 内存和 2 个 CPU 核心。',
     'create.cancel':         '取消',
@@ -377,6 +386,7 @@ const messages = {
     'skills.searchHint':     '在 ClawHub 搜索 13,000+ 社区技能',
     'skills.requiresRunning':'实例必须处于运行状态才能管理技能。',
     'card.skills':           '技能',
+    'card.hermesDashboard':  '⚕ 控制台',
 
     // Characters
     'sidebar.characters':    'Character 配置',

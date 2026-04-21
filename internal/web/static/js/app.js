@@ -104,9 +104,9 @@ function App() {
     try { await fn(); } finally { setPending(p => { const n = { ...p }; delete n[name]; return n; }); }
   };
 
-  const onCreate = async (count, snapshotName) => {
+  const onCreate = async (count, snapshotName, runtime) => {
     try {
-      await api.createInstances(count, snapshotName);
+      await api.createInstances(count, snapshotName, runtime);
       addToast(t('toast.created', count), 'success');
       setShowCreate(false);
     } catch (err) {
@@ -151,6 +151,13 @@ function App() {
       window.open(`http://localhost:${inst.gateway_port}/`, '_blank');
     } else {
       window.open(`/console/${name}/`, '_blank');
+    }
+  };
+
+  const onHermesDashboard = (name) => {
+    const inst = instances.find(i => i.name === name);
+    if (inst && inst.hermes_dashboard_port) {
+      window.open(`http://localhost:${inst.hermes_dashboard_port}/`, '_blank');
     }
   };
 
@@ -284,6 +291,7 @@ function App() {
           onConfigure=${(name) => setConfigureName(name)}
           onSnapshot=${onSnapshot}
           onSkills=${(name) => setSkillsName(name)}
+          onHermesDashboard=${onHermesDashboard}
           onCreateClick=${() => setShowCreate(true)}
         />
       `;

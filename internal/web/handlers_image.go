@@ -17,15 +17,18 @@ import (
 
 // handleImageStatus reports whether the sandbox Docker image has been built.
 func (s *Server) handleImageStatus(w http.ResponseWriter, r *http.Request) {
-	exists, err := container.ImageExists(s.docker, s.config.ImageRef())
+	openclawExists, err := container.ImageExists(s.docker, s.config.ImageRef())
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	hermesExists, _ := container.ImageExists(s.docker, s.config.HermesImageRef())
 	writeJSON(w, http.StatusOK, map[string]any{
 		"data": map[string]any{
-			"image": s.config.ImageRef(),
-			"built": exists,
+			"image":        s.config.ImageRef(),
+			"built":        openclawExists,
+			"hermes_image": s.config.HermesImageRef(),
+			"hermes_built": hermesExists,
 		},
 	})
 }

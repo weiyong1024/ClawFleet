@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -21,29 +22,80 @@ type CreateParams struct {
 	DataDir     string
 	MemoryBytes int64
 	NanoCPUs    int64
+	RuntimeType string
 }
 
 func Create(cli *docker.Client, p CreateParams) (string, error) {
-	portBindings := map[docker.Port][]docker.PortBinding{
-		"6901/tcp":  {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.NoVNCPort)}},
-		"18790/tcp": {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.GatewayPort)}},
-	}
-	exposedPorts := map[docker.Port]struct{}{
-		"6901/tcp":  {},
-		"18790/tcp": {},
+	var (
+		portBindings map[docker.Port][]docker.PortBinding
+		exposedPorts map[docker.Port]struct{}
+		binds        []string
+		env          []string
+	)
+
+	if p.RuntimeType == "hermes" {
+		portBindings = map[docker.Port][]docker.PortBinding{
+			"9119/tcp": {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.NoVNCPort)}},
+			"3000/tcp": {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.GatewayPort)}},
+		}
+		exposedPorts = map[docker.Port]struct{}{
+			"9119/tcp": {},
+			"3000/tcp": {},
+		}
+		binds = []string{fmt.Sprintf("%s:/opt/data", p.DataDir)}
+		env = []string{
+			fmt.Sprintf("HERMES_UID=%d", os.Getuid()),
+			fmt.Sprintf("HERMES_GID=%d", os.Getgid()),
+		}
+	} else {
+		portBindings = map[docker.Port][]docker.PortBinding{
+			"6901/tcp":  {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.NoVNCPort)}},
+			"18790/tcp": {{HostIP: "127.0.0.1", HostPort: strconv.Itoa(p.GatewayPort)}},
+		}
+		exposedPorts = map[docker.Port]struct{}{
+			"6901/tcp":  {},
+			"18790/tcp": {},
+		}
+		binds = []string{fmt.Sprintf("%s:/home/node/.openclaw", p.DataDir)}
+		env = []string{
+			"PLAYWRIGHT_BROWSERS_PATH=/ms-playwright",
+		}
 	}
 
-	binds := []string{fmt.Sprintf("%s:/home/node/.openclaw", p.DataDir)}
+	// Hermes: run both dashboard (config UI on :9119) and gateway (messaging on :3000).
+	// We override the entrypoint to run setup + multi-process launch in one script.
+	// The official entrypoint does: UID/GID remap → gosu drop → dir/config bootstrap
+	// → skill sync → exec hermes. We replicate the essential setup steps here.
+	var cmd []string
+	var entrypoint []string
+	if p.RuntimeType == "hermes" {
+		entrypoint = []string{"/bin/bash", "-c"}
+		cmd = []string{
+			`set -e; export HERMES_HOME="${HERMES_HOME:-/opt/data}"; ` +
+				// Activate Python venv
+				`source /opt/hermes/.venv/bin/activate; ` +
+				// Bootstrap dirs and config (same as official entrypoint.sh)
+				`mkdir -p "$HERMES_HOME"/{cron,sessions,logs,hooks,memories,skills,skins,plans,workspace,home}; ` +
+				`[ -f "$HERMES_HOME/.env" ] || cp /opt/hermes/.env.example "$HERMES_HOME/.env"; ` +
+				`[ -f "$HERMES_HOME/config.yaml" ] || cp /opt/hermes/cli-config.yaml.example "$HERMES_HOME/config.yaml"; ` +
+				`[ -f "$HERMES_HOME/SOUL.md" ] || cp /opt/hermes/docker/SOUL.md "$HERMES_HOME/SOUL.md"; ` +
+				// Sync bundled skills
+				`python3 /opt/hermes/tools/skills_sync.py 2>/dev/null || true; ` +
+				// Launch dashboard in background, gateway as foreground process
+				`hermes dashboard --host 0.0.0.0 --port 9119 --no-open --insecure & ` +
+				`exec hermes gateway run`,
+		}
+	}
 
 	container, err := cli.CreateContainer(docker.CreateContainerOptions{
 		Name: p.Name,
 		Config: &docker.Config{
 			Image:        p.ImageRef,
+			Entrypoint:   entrypoint,
+			Cmd:          cmd,
 			ExposedPorts: exposedPorts,
 			Labels:       map[string]string{cfg.LabelManaged: "true"},
-			Env: []string{
-				"PLAYWRIGHT_BROWSERS_PATH=/ms-playwright",
-			},
+			Env:          env,
 		},
 		HostConfig: &docker.HostConfig{
 			Binds:        binds,

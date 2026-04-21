@@ -6,6 +6,7 @@ export function CreateDialog({ onClose, onCreate }) {
   const { t } = useLang();
   const [count, setCount] = useState(1);
   const [creating, setCreating] = useState(false);
+  const [runtime, setRuntime] = useState('openclaw');
   const [snapshots, setSnapshots] = useState([]);
   const [selectedSnapshot, setSelectedSnapshot] = useState('');
 
@@ -17,7 +18,7 @@ export function CreateDialog({ onClose, onCreate }) {
     e.preventDefault();
     setCreating(true);
     try {
-      await onCreate(count, selectedSnapshot || undefined);
+      await onCreate(count, selectedSnapshot || undefined, runtime);
     } finally {
       setCreating(false);
     }
@@ -33,6 +34,16 @@ export function CreateDialog({ onClose, onCreate }) {
         <form onSubmit=${handleSubmit}>
           <div class="dialog-body">
             <label class="form-label">
+              ${t('create.runtime')}
+              <select class="form-input" value=${runtime} onChange=${(e) => {
+                setRuntime(e.target.value);
+                if (e.target.value === 'hermes') setSelectedSnapshot('');
+              }}>
+                <option value="openclaw">${t('create.runtimeOpenClaw')}</option>
+                <option value="hermes">${t('create.runtimeHermes')}</option>
+              </select>
+            </label>
+            <label class="form-label">
               ${t('create.label')}
               <input
                 type="number"
@@ -47,7 +58,7 @@ export function CreateDialog({ onClose, onCreate }) {
             ${snapshots.length > 0 && html`
               <label class="form-label">
                 ${t('create.snapshot')}
-                <select class="form-input" value=${selectedSnapshot} onChange=${(e) => setSelectedSnapshot(e.target.value)}>
+                <select class="form-input" value=${selectedSnapshot} onChange=${(e) => setSelectedSnapshot(e.target.value)} disabled=${runtime === 'hermes'}>
                   <option value="">${t('create.noSnapshot')}</option>
                   ${snapshots.map(s => html`
                     <option key=${s.id} value=${s.name}>${s.name}</option>
