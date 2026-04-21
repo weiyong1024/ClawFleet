@@ -18,12 +18,16 @@ const (
 	DefaultCPULimit     = 2.0
 	DefaultNamingPrefix = "claw"
 
+	DefaultHermesImageName = "nousresearch/hermes-agent"
+	DefaultHermesImageTag  = "latest"
+
 	NetworkName  = "clawfleet-net"
 	LabelManaged = "clawfleet.managed"
 )
 
 type Config struct {
 	Image     ImageConfig    `yaml:"image"`
+	Hermes    HermesConfig   `yaml:"hermes"`
 	Ports     PortsConfig    `yaml:"ports"`
 	Resources ResourceConfig `yaml:"resources"`
 	Naming    NamingConfig   `yaml:"naming"`
@@ -48,14 +52,24 @@ type NamingConfig struct {
 	Prefix string `yaml:"prefix"`
 }
 
+type HermesConfig struct {
+	ImageName string `yaml:"image_name"`
+	ImageTag  string `yaml:"image_tag"`
+}
+
 func (c *Config) ImageRef() string {
 	return fmt.Sprintf("%s:%s", c.Image.Name, c.Image.Tag)
 }
 
+func (c *Config) HermesImageRef() string {
+	return fmt.Sprintf("%s:%s", c.Hermes.ImageName, c.Hermes.ImageTag)
+}
+
 func DefaultConfig() *Config {
 	return &Config{
-		Image: ImageConfig{Name: DefaultImageName, Tag: version.ImageTag()},
-		Ports: PortsConfig{NoVNCBase: DefaultNoVNCBase, GatewayBase: DefaultGatewayBase},
+		Image:  ImageConfig{Name: DefaultImageName, Tag: version.ImageTag()},
+		Hermes: HermesConfig{ImageName: DefaultHermesImageName, ImageTag: DefaultHermesImageTag},
+		Ports:  PortsConfig{NoVNCBase: DefaultNoVNCBase, GatewayBase: DefaultGatewayBase},
 		Resources: ResourceConfig{
 			MemoryLimit: DefaultMemoryLimit,
 			CPULimit:    DefaultCPULimit,
