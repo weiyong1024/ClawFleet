@@ -62,10 +62,18 @@ func Create(cli *docker.Client, p CreateParams) (string, error) {
 		}
 	}
 
+	// Hermes needs an explicit startup command (dashboard server).
+	// Without it, the entrypoint defaults to interactive chat and exits immediately.
+	var cmd []string
+	if p.RuntimeType == "hermes" {
+		cmd = []string{"dashboard", "--host", "0.0.0.0", "--port", "9119", "--no-open", "--insecure"}
+	}
+
 	container, err := cli.CreateContainer(docker.CreateContainerOptions{
 		Name: p.Name,
 		Config: &docker.Config{
 			Image:        p.ImageRef,
+			Cmd:          cmd,
 			ExposedPorts: exposedPorts,
 			Labels:       map[string]string{cfg.LabelManaged: "true"},
 			Env:          env,
