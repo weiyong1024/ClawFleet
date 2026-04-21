@@ -34,14 +34,16 @@ curl -fsSL https://clawfleet.io/install.sh | sh
 
 ## ClawFleet 能做什么
 
-- **沙箱隔离** — 每个 OpenClaw 跑在独立 Docker 容器中，与宿主机和其他实例完全隔离。恶意技能无法读取你的文件
+- **多运行时 Fleet** — 在同一个 Dashboard 中同时运行 [OpenClaw](https://github.com/openclaw/openclaw) 和 [Hermes Agent](https://github.com/NousResearch/hermes-agent) 实例
+- **沙箱隔离** — 每个实例跑在独立 Docker 容器中，与宿主机和其他实例完全隔离
 - **浏览器管理** — 创建、配置、监控、销毁实例，全程无需触碰终端
 - **多供应商支持** — 一个 API Key 接入 OpenAI、Anthropic、Google AI Studio 或 DeepSeek
-- **版本锁定** — 锁定已测试的 OpenClaw 版本，上游 breaking changes 与你无关
+- **`clawfleet shell`** — 一键进入任意实例的交互终端：Hermes TUI 对话或 OpenClaw bash
+- **版本锁定** — 锁定已测试的运行时版本，上游 breaking changes 与你无关
 - **军团管理** — 按内存允许的数量创建实例，每个可配置不同模型、人设和频道
-- **人设系统** — 定义可复用的角色人设（简介、背景、风格、特征），赋予每个实例
+- **人设系统** — 定义可复用的角色人设（简介、背景、风格、特征），赋予 OpenClaw 实例
 - **技能管理** — 浏览 52 个内置技能，从 ClawHub 13,000+ 社区技能中搜索安装
-- **独立桌面** — 每个实例内含 XFCE 桌面，通过 noVNC 在浏览器中访问
+- **独立桌面** — 每个 OpenClaw 实例内含 XFCE 桌面，通过 noVNC 在浏览器中访问
 - **灵魂存档** — 保存已配置实例的灵魂，随时克隆到新实例
 - **自动恢复** — 实例在容器重启后自动恢复运行
 

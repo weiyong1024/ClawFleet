@@ -34,14 +34,16 @@ curl -fsSL https://clawfleet.io/install.sh | sh
 
 ## What ClawFleet Does
 
-- **Sandboxed instances** — each OpenClaw runs in its own Docker container, isolated from your host and from each other. No rogue skill can read your files
+- **Multi-runtime Fleet** — run both [OpenClaw](https://github.com/openclaw/openclaw) and [Hermes Agent](https://github.com/NousResearch/hermes-agent) instances side by side in one unified dashboard
+- **Sandboxed instances** — each instance runs in its own Docker container, isolated from your host and from each other
 - **Browser dashboard** — create, configure, monitor, and destroy instances without touching a terminal
 - **Any LLM provider** — connect with a single API key from OpenAI, Anthropic, Google AI Studio, or DeepSeek
-- **Version pinning** — lock a tested OpenClaw version so upstream breaking changes don't touch you
+- **`clawfleet shell`** — drop into any instance's interactive terminal: Hermes TUI chat or OpenClaw bash shell
+- **Version pinning** — lock tested runtime versions so upstream breaking changes don't touch you
 - **Fleet management** — spin up as many instances as your RAM allows, each with different models, personas, and channels
-- **Character system** — define reusable personas (bio, backstory, style, traits) and assign them to instances
+- **Character system** — define reusable personas (bio, backstory, style, traits) and assign them to OpenClaw instances
 - **Skill management** — browse 52 built-in skills, search and install from 13,000+ community skills on ClawHub
-- **Full desktop per instance** — each claw has an XFCE desktop accessible via noVNC in your browser
+- **Full desktop per instance** — each OpenClaw instance has an XFCE desktop accessible via noVNC in your browser
 - **Soul Archive** — save a configured instance's soul and clone it instantly
 - **Auto-recovery** — instances automatically restart their gateway after container restarts
 
