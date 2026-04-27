@@ -12,7 +12,7 @@ import (
 
 var snapshotListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all snapshots",
+	Short: "List all OpenClaw snapshots",
 	Args:  cobra.NoArgs,
 	RunE:  runSnapshotList,
 }

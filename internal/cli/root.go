@@ -9,10 +9,10 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:   "clawfleet",
-	Short: "Deploy and manage a fleet of OpenClaw instances",
-	Long: `ClawFleet lets you spin up multiple isolated OpenClaw instances
-on a single machine. Each instance runs in its own Docker container
-with a full Linux desktop, accessible via your browser.`,
+	Short: "Deploy and manage a fleet of OpenClaw and Hermes instances",
+	Long: `ClawFleet lets you spin up isolated OpenClaw and Hermes agent instances
+on a single machine. Each instance runs in its own Docker container,
+managed from a unified browser dashboard or this CLI.`,
 }
 
 func Execute() {

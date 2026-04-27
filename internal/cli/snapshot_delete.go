@@ -11,7 +11,7 @@ import (
 
 var snapshotDeleteCmd = &cobra.Command{
 	Use:     "delete <snapshot-name>",
-	Short:   "Delete a snapshot",
+	Short:   "Delete an OpenClaw snapshot",
 	Args:    cobra.ExactArgs(1),
 	Example: "  clawfleet snapshot delete my-snapshot",
 	RunE:    runSnapshotDelete,

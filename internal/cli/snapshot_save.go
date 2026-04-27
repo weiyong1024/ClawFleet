@@ -17,7 +17,7 @@ var (
 
 var snapshotSaveCmd = &cobra.Command{
 	Use:     "save <instance-name>",
-	Short:   "Save a snapshot of an instance",
+	Short:   "Save a snapshot of an OpenClaw instance",
 	Args:    cobra.ExactArgs(1),
 	Example: "  clawfleet snapshot save openclaw-1\n  clawfleet snapshot save openclaw-1 --name my-snapshot --description \"Production config\"",
 	RunE:    runSnapshotSave,

@@ -11,7 +11,7 @@ import (
 
 var desktopCmd = &cobra.Command{
 	Use:     "desktop <name>",
-	Short:   "Open an instance's noVNC desktop in the browser",
+	Short:   "Open an OpenClaw instance's noVNC desktop in the browser",
 	Args:    cobra.ExactArgs(1),
 	Example: "  clawfleet desktop openclaw-1",
 	RunE:    runDesktop,
