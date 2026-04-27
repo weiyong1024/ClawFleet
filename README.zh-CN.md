@@ -177,6 +177,10 @@ ClawFleet 当前对 Hermes 提供：
 
 ![OpenClaw Control Panel 与 Hermes Dashboard 并列](docs/images/runtime_native_dashboard.png)
 
+此外，ClawFleet 还通过 noVNC 把实例容器内的图形桌面暴露到浏览器——方便观察 agent 正在做什么、手动接管工作流、或演示。当前在 OpenClaw 镜像上可用（OpenClaw 镜像内置 XFCE 桌面）；为 Hermes 提供同等可视化能力是 ClawFleet 正在推进的方向。
+
+![实例浏览器桌面](docs/images/instance-desktop.jpeg)
+
 ## 文档
 
 完整文档请参阅 **[Wiki](https://github.com/clawfleet/ClawFleet/wiki)**：

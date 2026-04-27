@@ -177,6 +177,10 @@ In ClawFleet today:
 
 ![OpenClaw Control Panel and Hermes Dashboard side by side](docs/images/runtime_native_dashboard.png)
 
+On top of either runtime, ClawFleet also exposes the instance's graphical desktop in the browser via noVNC — useful for watching what the agent does, manually steering a workflow, or demoing. Available today on OpenClaw images (which ship an XFCE desktop); bringing equivalent visibility to Hermes is on the roadmap.
+
+![Per-instance browser desktop](docs/images/instance-desktop.jpeg)
+
 ## Documentation
 
 See the **[Wiki](https://github.com/clawfleet/ClawFleet/wiki)** for full documentation:
